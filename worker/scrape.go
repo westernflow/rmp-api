@@ -18,18 +18,6 @@ func Scrape () []model.Professor {
 		fmt.Println("Error fetching document")
 	}
 
-	if (scraper.Status != "200") {
-		fmt.Println("Error. Received status code:", scraper.Status)
-	}
-
-	s, err := doc.Html(); if err != nil {
-		fmt.Println("Error getting html")
-	}
-
-	fmt.Println(scraper.Status, s)
-
-	// Wait for the page to load 
-
 	// professors on the page
 	fmt.Println("Scraping for professors")
 	professors := scraper.scrapeProfessors(doc)

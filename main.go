@@ -6,5 +6,5 @@ import (
 
 func main() {
 	// call the scraper
-	worker.Scrape()
+	worker.PopulateDB()
 }
