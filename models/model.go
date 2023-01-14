@@ -32,6 +32,98 @@ type Request struct {
 	Variables map[string]interface{} `json:"variables"`
 }
 
+type HomePageVariableQuery struct {
+	Text       string `json:"text"`
+	SchoolID   string `json:"schoolID"`
+	Fallback   bool   `json:"fallback"`
+	Department *string `json:"departmentID"` // this gave me a lot of trouble lol
+}
+
+type HPV struct {
+	Query HomePageVariableQuery `json:"query"`
+	SchoolId string `json:"schoolID"` 
+}
+
+type HomePageRequest struct {
+	Query     string `json:"query"`
+	Variables HPV `json:"variables"`
+}
+
+type Department struct {
+	Name string `json:"name"`
+	ID  string `json:"id"`
+}
+
+type DepartmentPageData struct {
+	Data struct {
+		Search struct {
+			Teachers struct {
+				DidFallback bool          `json:"didFallback"`
+				Edges       []interface{} `json:"edges"`
+				Filters     []struct {
+					Field   string `json:"field"`
+					Options []struct {
+						ID    string `json:"id"`
+						Value string `json:"value"`
+					} `json:"options"`
+				} `json:"filters"`
+				PageInfo struct {
+					EndCursor   string `json:"endCursor"`
+					HasNextPage bool   `json:"hasNextPage"`
+				} `json:"pageInfo"`
+				ResultCount int `json:"resultCount"`
+			} `json:"teachers"`
+		} `json:"search"`
+	} `json:"data"`
+}
+
+type HomePageData struct {
+	Data struct {
+		School struct {
+			Typename string `json:"__typename"`
+			ID       string `json:"id"`
+			Name     string `json:"name"`
+		} `json:"school"`
+		Search struct {
+			Teachers struct {
+				DidFallback bool `json:"didFallback"`
+				Edges       []struct {
+					Cursor string `json:"cursor"`
+					Node   struct {
+						Typename      string  `json:"__typename"`
+						AvgDifficulty float64 `json:"avgDifficulty"`
+						AvgRating     float64 `json:"avgRating"`
+						Department    string  `json:"department"`
+						FirstName     string  `json:"firstName"`
+						ID            string  `json:"id"`
+						IsSaved       bool    `json:"isSaved"`
+						LastName      string  `json:"lastName"`
+						LegacyID      int     `json:"legacyId"`
+						NumRatings    int     `json:"numRatings"`
+						School        struct {
+							ID   string `json:"id"`
+							Name string `json:"name"`
+						} `json:"school"`
+						WouldTakeAgainPercent int `json:"wouldTakeAgainPercent"`
+					} `json:"node"`
+				} `json:"edges"`
+				Filters []struct {
+					Field   string `json:"field"`
+					Options []struct {
+						ID    string `json:"id"`
+						Value string `json:"value"`
+					} `json:"options"`
+				} `json:"filters"`
+				PageInfo struct {
+					EndCursor   string `json:"endCursor"`
+					HasNextPage bool   `json:"hasNextPage"`
+				} `json:"pageInfo"`
+				ResultCount int `json:"resultCount"`
+			} `json:"teachers"`
+		} `json:"search"`
+	} `json:"data"`
+}
+
 type ProfessorData struct {
 	// Typename      string  `json:"__typename"`
 	AvgDifficulty float64 `json:"avgDifficulty"`

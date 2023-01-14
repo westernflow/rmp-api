@@ -38,6 +38,74 @@ type PageResult struct {
 	Doc  *goquery.Document
 }
 
+// getDepartments returns a list of all departments at Western
+func GetDepartments() []model.Department {
+	newHomePageRequest := model.HomePageRequest{
+		Query:  homePageQuery,
+		Variables: model.HPV{
+			Query: model.HomePageVariableQuery{
+				Text:     "",
+				SchoolID: westernID,
+				Fallback: true,
+			},
+			SchoolId: westernID,
+		},
+	}
+	fmt.Printf("%+v",newHomePageRequest) 
+	
+	// create a request to get the departments
+	requestJson, err := json.Marshal(newHomePageRequest); if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(requestJson))
+
+	req, err := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(req.Body)
+	// add headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
+	client := &http.Client{}
+	resp, err := client.Do(req); if err != nil {
+		fmt.Println(err)
+	}
+
+	defer resp.Body.Close()
+
+	// read the response
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// unmarshal the response
+	var response model.HomePageData
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(req.Body)
+	fmt.Println(response.Data.Search.Teachers)
+
+	// get the departments
+	var departments []model.Department
+	for _, department := range response.Data.Search.Teachers.Filters[0].Options {
+		departments = append(departments, model.Department{
+			Name: department.ID,
+			ID:  department.Value,
+		})
+	}
+	fmt.Println(departments)			
+	return departments
+	// TODO: add to databaes
+}
+
+// buildProfessor takes a ProfessorData model and transforms it into a Professor model
 func buildProfessor(node model.ProfessorData) model.Professor {
 	var professor model.Professor
 	professor.Name = node.FirstName + " " + node.LastName
@@ -80,17 +148,19 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 	return professor
 }
 
+// GetProfessorData takes a professor id and queries graphql to get the professor data
 func GetProfessorData(id string) (professor model.Professor, err error) {
 	variables := make(map[string]interface{})
 	variables["id"] = id
 	request := model.Request{Query: profQuery, Variables: variables}
 	// send the graphql request
 	// convert request to string
-	requestString, err := json.Marshal(request); if err != nil {
+	requestJson, err := json.Marshal(request); if err != nil {
 		fmt.Println("Error converting request to string:", err)
 	}
-	
-	req, _ := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestString))
+	fmt.Println(string(requestJson))
+	fmt.Println("-----------------")
+	req, _ := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
 	client := &http.Client{}
