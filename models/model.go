@@ -13,7 +13,7 @@ type Review struct {
 
 type Course struct {
 	Department string `json:"department"`
-	Number     int    `json:"number"`
+	Number     string    `json:"number"`
 }
 
 // create a model for a professor with the fields: name, rating, numRatings, department, level of difficulty, and reviews
