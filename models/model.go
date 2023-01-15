@@ -1,32 +1,5 @@
 package model
 
-type Review struct {
-	Professor  string `json:"professor"`
-	Quality 	float64    `json:"quality"`
-	Difficulty float64    `json:"difficulty"`
-	Date       string `json:"date"`
-	ReviewText string `json:"reviewText"`
-	Course     Course `json:"course"`
-	Helpful 	 float64 `json:"helpful"` // quality = helpful+clarity/2	
-	Clarity 	 float64 `json:"clarity"`
-}
-
-type Course struct {
-	Department string `json:"department"`
-	Number     string    `json:"number"`
-}
-
-// create a model for a professor with the fields: name, rating, numRatings, department, level of difficulty, and reviews
-type Professor struct {
-	Name        string  `json:"name"`
-	RMPId 		 string     `json:"rmpId"`
-	Rating      float64 `json:"rating"`
-	Department string `json:"department"`
-	Difficulty  float64 `json:"difficulty"`
-	Reviews     []Review `json:"reviews"`
-	Courses []Course `json:"courseCodes"`
-}
-
 type Request struct {
 	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
@@ -47,6 +20,23 @@ type HPV struct {
 type HomePageRequest struct {
 	Query     string `json:"query"`
 	Variables HPV `json:"variables"`
+}
+
+ type DepartmentPageQuery struct { // test this given other struct
+	Text       string `json:"text"`
+	SchoolID   string `json:"schoolID"`
+	Fallback   bool   `json:"fallback"`
+}
+
+type DepartmentPageVariableQuery struct {
+	Count 		int    `json:"count"`
+	Cursor 		string `json:"cursor"`
+	Query 		DepartmentPageQuery `json:"query"`
+}
+
+type DepartmentPageRequest struct {
+	Query     string `json:"query"`
+	Variables DepartmentPageVariableQuery `json:"variables"`
 }
 
 type Department struct {

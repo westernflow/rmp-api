@@ -23,6 +23,34 @@ import (
 	"strings"
 )
 
+// create a model for a professor with the fields: name, rating, numRatings, department, level of difficulty, and reviews
+type Professor struct {
+	Name        string  `json:"name"`
+	RMPId 		 string     `json:"rmpId"`
+	Rating      float64 `json:"rating"`
+	Department string `json:"department"`
+	Difficulty  float64 `json:"difficulty"`
+	Reviews     []Review `json:"reviews"`
+	Courses []Course `json:"courseCodes"`
+}
+
+type Review struct {
+	Professor  string `json:"professor"`
+	Quality 	float64    `json:"quality"`
+	Difficulty float64    `json:"difficulty"`
+	Date       string `json:"date"`
+	ReviewText string `json:"reviewText"`
+	Course     Course `json:"course"`
+	Helpful 	 float64 `json:"helpful"` // quality = helpful+clarity/2	
+	Clarity 	 float64 `json:"clarity"`
+}
+
+type Course struct {
+	Department string `json:"department"`
+	Number     string    `json:"number"`
+}
+
+
 // PageScraper defines the context for the page to be scraped and the location of scrape resulst
 type PageScraper struct {
 	Header string
@@ -38,7 +66,11 @@ type PageResult struct {
 	Doc  *goquery.Document
 }
 
-// getDepartments returns a list of all departments at Western
+func (p Professor) AddToDatabase() {
+	fmt.Println(p)
+}
+
+// getDepartments populates the database with all departments at Western
 func GetDepartments() []model.Department {
 	newHomePageRequest := model.HomePageRequest{
 		Query:  homePageQuery,
@@ -51,21 +83,16 @@ func GetDepartments() []model.Department {
 			SchoolId: westernID,
 		},
 	}
-	fmt.Printf("%+v",newHomePageRequest) 
-	
 	// create a request to get the departments
 	requestJson, err := json.Marshal(newHomePageRequest); if err != nil {
 		panic(err)
 	}
-
-	fmt.Println(string(requestJson))
 
 	req, err := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Println(req.Body)
 	// add headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
@@ -89,25 +116,22 @@ func GetDepartments() []model.Department {
 		fmt.Println(err)
 	}
 
-	fmt.Println(req.Body)
-	fmt.Println(response.Data.Search.Teachers)
 
 	// get the departments
 	var departments []model.Department
 	for _, department := range response.Data.Search.Teachers.Filters[0].Options {
 		departments = append(departments, model.Department{
-			Name: department.ID,
-			ID:  department.Value,
+			Name: department.Value,
+			ID:  department.ID,
 		})
 	}
-	fmt.Println(departments)			
 	return departments
 	// TODO: add to databaes
 }
 
 // buildProfessor takes a ProfessorData model and transforms it into a Professor model
-func buildProfessor(node model.ProfessorData) model.Professor {
-	var professor model.Professor
+func buildProfessor(node model.ProfessorData) Professor {
+	var professor Professor
 	professor.Name = node.FirstName + " " + node.LastName
 	professor.RMPId = node.ID
 	professor.Rating = node.AvgRating
@@ -115,9 +139,9 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 	professor.Department = node.Department
 
 	// get the reviews from the professor data
-	var reviews []model.Review
+	var reviews []Review
 	for _, edge := range node.Ratings.Edges {
-		var review model.Review
+		var review Review
 
 		// attempt to parse edge.Node.Class into the course struct
 		// if it does not match the following regexp ^[a-zA-z][a-zA-z]+[0-9][0-9][0-9]$ then it is not a course and should be ignored
@@ -148,8 +172,8 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 	return professor
 }
 
-// GetProfessorData takes a professor id and queries graphql to get the professor data
-func GetProfessorData(id string) (professor model.Professor, err error) {
+// GetProfessorData populates the database with a professor at western
+func GetProfessorData(id string) (professor Professor, err error) {
 	variables := make(map[string]interface{})
 	variables["id"] = id
 	request := model.Request{Query: profQuery, Variables: variables}
@@ -158,8 +182,6 @@ func GetProfessorData(id string) (professor model.Professor, err error) {
 	requestJson, err := json.Marshal(request); if err != nil {
 		fmt.Println("Error converting request to string:", err)
 	}
-	fmt.Println(string(requestJson))
-	fmt.Println("-----------------")
 	req, _ := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
@@ -184,28 +206,62 @@ func GetProfessorData(id string) (professor model.Professor, err error) {
 	return newprof, err
 }
 
-func PopulateDB() {
-	variables := make(map[string]interface{})
-	variables["id"] = "VGVhY2hlci03OTIy"
-	request := model.Request{Query: profQuery, Variables: variables}
-	// send the graphql request
-	// convert request to string
-	requestString, err := json.Marshal(request); if err != nil {
-		fmt.Println("Error converting request to string:", err)
+// gets all professors from the given department
+func AddProfessorsFromDepartmentToDatabase(departmentBase64Code string) {
+	newHomePageRequest := model.HomePageRequest{
+		Query:  departmentQuery,
+		Variables: model.HPV{
+			Query: model.HomePageVariableQuery{
+				Text:     "",
+				SchoolID: westernID,
+				Fallback: true,
+				Department: &departmentBase64Code,
+			},
+			SchoolId: westernID,
+		},
 	}
-	
-	req, _ := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestString))
+	// create a request to get the departments
+	requestJson, err := json.Marshal(newHomePageRequest); if err != nil {
+		panic(err)
+	}
+
+	req, err := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// add headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
 	client := &http.Client{}
 	resp, err := client.Do(req); if err != nil {
-		fmt.Println("Error sending request:", err)
+		fmt.Println(err)
 	}
 
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
+	// read the response
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// unmarshal the response
+	var response model.HomePageData
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// for each professor in the response, get the professor's id and call getProfessorData
+	for _, professor := range response.Data.Search.Teachers.Edges {
+		professorID := professor.Node.ID
+		professor, err := GetProfessorData(professorID); if err != nil {
+			fmt.Println("Error getting professor data:", err)
+		}
+		// add the professor to the database
+		professor.AddToDatabase()
+	}
 }
 
 // FetchDocument fetches contents of page based on URL
@@ -239,7 +295,7 @@ func (scraper *PageScraper) FetchDocument() (document *goquery.Document, err err
 	return doc, nil
 }
 
-func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
+func scrapeProfessorData(s *goquery.Selection) (professor Professor) {
 	// get the name of the professor
 	name := s.Find(cardNameSelector).Text()
 		
@@ -271,12 +327,12 @@ func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 
 	// parse profId to int
 	profId := strings.Split(hrefLink,"=")[1]
-	return model.Professor{Name: name, Difficulty: difficulty, Department: department, Rating: rating, RMPId: profId}
+	return Professor{Name: name, Difficulty: difficulty, Department: department, Rating: rating, RMPId: profId}
 }
 
-func (scraper *PageScraper) scrapeProfessors(doc *goquery.Document) []model.Professor {
+func (scraper *PageScraper) scrapeProfessors(doc *goquery.Document) []Professor {
 	// create a slice of professors
-	var professors []model.Professor
+	var professors []Professor
 
 	// use goquery to select the node with this class: "SearchResultsPage__SearchResultsWrapper-vhbycj-1 gxbBpy" and then select the html div node with no class
 	doc.Find(teacherCardSelector).Each(func(i int, s *goquery.Selection) {
