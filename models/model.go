@@ -94,7 +94,7 @@ type HomePageData struct {
 							ID   string `json:"id"`
 							Name string `json:"name"`
 						} `json:"school"`
-						WouldTakeAgainPercent int `json:"wouldTakeAgainPercent"`
+						WouldTakeAgainPercent float64 `json:"wouldTakeAgainPercent"`
 					} `json:"node"`
 				} `json:"edges"`
 				Filters []struct {
