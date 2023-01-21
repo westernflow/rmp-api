@@ -2,10 +2,11 @@ package worker
 
 import (
 	"fmt"
+	"rmpParser/models"
 )
 
 // Create a worker that will scrape the data of each professor on this page `https://www.ratemyprofessors.com/school?sid=1491`
-func Scrape () []Professor {
+func Scrape () []model.Professor {
 	// create a new page scraper with url set to "https://www.ratemyprofessors.com/school?sid=1491"
 	
 	scraper := PageScraper{

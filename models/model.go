@@ -39,11 +39,6 @@ type DepartmentPageRequest struct {
 	Variables DepartmentPageVariableQuery `json:"variables"`
 }
 
-type Department struct {
-	Name string `json:"name"`
-	ID  string `json:"id"`
-}
-
 type DepartmentPageData struct {
 	Data struct {
 		Search struct {
