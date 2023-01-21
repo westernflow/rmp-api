@@ -14,7 +14,6 @@ import (
 	"rmpParser/models"
 
 	"github.com/PuerkitoBio/goquery"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/chromedp/chromedp"
 	// "github.com/graphql-go/graphql"
@@ -24,39 +23,37 @@ import (
 )
 
 // create a model for a professor with the fields: name, rating, numRatings, department, level of difficulty, and reviews
-type Professor struct {
-	Name        string  `json:"name"`
-	RMPId 		 string     `json:"rmpId"`
-	Rating      float64 `json:"rating"`
-	Department string `json:"department"`
-	Difficulty  float64 `json:"difficulty"`
-	Reviews     []Review `json:"reviews"`
-	Courses []Course `json:"courseCodes"`
-}
+// type Professor struct {
+// 	Name        string  `json:"name"`
+// 	RMPId 		 string     `json:"rmpId"`
+// 	Rating      float64 `json:"rating"`
+// 	Department string `json:"department"`
+// 	Difficulty  float64 `json:"difficulty"`
+// 	Reviews     []Review `json:"reviews"`
+// 	Courses []Course `json:"courseCodes"`
+// }
 
-type Review struct {
-	Professor  string `json:"professor"`
-	Quality 	float64    `json:"quality"`
-	Difficulty float64    `json:"difficulty"`
-	Date       string `json:"date"`
-	ReviewText string `json:"reviewText"`
-	Course     Course `json:"course"`
-	Helpful 	 float64 `json:"helpful"` // quality = helpful+clarity/2	
-	Clarity 	 float64 `json:"clarity"`
-}
+// type Review struct {
+// 	Professor  string `json:"professor"`
+// 	Quality 	float64    `json:"quality"`
+// 	Difficulty float64    `json:"difficulty"`
+// 	Date       string `json:"date"`
+// 	ReviewText string `json:"reviewText"`
+// 	Course     Course `json:"course"`
+// 	Helpful 	 float64 `json:"helpful"` // quality = helpful+clarity/2	
+// 	Clarity 	 float64 `json:"clarity"`
+// }
 
-type Course struct {
-	Department string `json:"department"`
-	Number     string    `json:"number"`
-}
+// type Course struct {
+// 	Department string `json:"department"`
+// 	Number     string    `json:"number"`
+// }
 
 
-// PageScraper defines the context for the page to be scraped and the location of scrape resulst
 type PageScraper struct {
 	Header string
 	URL    string
 	Status string
-	DB     *mongo.Database // switch to dynamo?
 	Form   *goquery.Selection
 }
 
@@ -64,10 +61,6 @@ type PageScraper struct {
 type PageResult struct {
 	Name string
 	Doc  *goquery.Document
-}
-
-func (p Professor) AddToDatabase() {
-	fmt.Println(p)
 }
 
 // getDepartments populates the database with all departments at Western
@@ -122,7 +115,7 @@ func GetDepartments() []model.Department {
 	for _, department := range response.Data.Search.Teachers.Filters[0].Options {
 		departments = append(departments, model.Department{
 			Name: department.Value,
-			ID:  department.ID,
+			DepartmentBase64Code:  department.ID,
 		})
 	}
 	return departments
@@ -130,8 +123,10 @@ func GetDepartments() []model.Department {
 }
 
 // buildProfessor takes a ProfessorData model and transforms it into a Professor model
-func buildProfessor(node model.ProfessorData) Professor {
-	var professor Professor
+func buildProfessor(node model.ProfessorData) model.Professor {
+	fmt.Println("building professor: " + node.FirstName + " " + node.LastName)
+	fmt.Println(node.Ratings.Edges)
+	var professor model.Professor
 	professor.Name = node.FirstName + " " + node.LastName
 	professor.RMPId = node.ID
 	professor.Rating = node.AvgRating
@@ -139,9 +134,9 @@ func buildProfessor(node model.ProfessorData) Professor {
 	professor.Department = node.Department
 
 	// get the reviews from the professor data
-	var reviews []Review
+	var reviews []model.Review
 	for _, edge := range node.Ratings.Edges {
-		var review Review
+		var review model.Review
 
 		// attempt to parse edge.Node.Class into the course struct
 		// if it does not match the following regexp ^[a-zA-z][a-zA-z]+[0-9][0-9][0-9]$ then it is not a course and should be ignored
@@ -149,7 +144,7 @@ func buildProfessor(node model.ProfessorData) Professor {
 		// first remove spaces
 		edge.Node.Class = strings.ReplaceAll(edge.Node.Class, " ", "")
 		// then check if it matches the regexp
-		if !regexp.MustCompile(`^[a-zA-z][a-zA-z]+[0-9][0-9][0-9]$`).MatchString(edge.Node.Class) {
+		if !regexp.MustCompile(`^[a-zA-z][a-zA-z]*[0-9][0-9][0-9]*$`).MatchString(edge.Node.Class) {
 			continue
 		}
 		// if it does match, then parse it into the course struct
@@ -166,14 +161,18 @@ func buildProfessor(node model.ProfessorData) Professor {
 		review.ReviewText = edge.Node.Comment
 		review.Helpful = edge.Node.HelpfulRating
 		review.Clarity = edge.Node.ClarityRating
+		fmt.Println("------------------")
+		fmt.Println(review)
+		fmt.Println("------------------")
 		reviews = append(reviews, review)
 	}
 	professor.Reviews = reviews
+	fmt.Println("THIS THE PROFESOR REVIEW ABDZ", professor.Reviews)
 	return professor
 }
 
 // GetProfessorData populates the database with a professor at western
-func GetProfessorData(id string) (professor Professor, err error) {
+func GetProfessorData(id string) (professor model.Professor, err error) {
 	variables := make(map[string]interface{})
 	variables["id"] = id
 	request := model.Request{Query: profQuery, Variables: variables}
@@ -206,8 +205,15 @@ func GetProfessorData(id string) (professor Professor, err error) {
 	return newprof, err
 }
 
+type Controller interface {
+	InsertDepartment(department model.Department)
+	InsertProfessor(professor model.Professor)
+	InsertReview(review model.Review)
+	InsertCourse(course model.Course)
+}
+
 // gets all professors from the given department
-func AddProfessorsFromDepartmentToDatabase(departmentBase64Code string) {
+func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code string) {
 	newHomePageRequest := model.HomePageRequest{
 		Query:  departmentQuery,
 		Variables: model.HPV{
@@ -260,7 +266,7 @@ func AddProfessorsFromDepartmentToDatabase(departmentBase64Code string) {
 			fmt.Println("Error getting professor data:", err)
 		}
 		// add the professor to the database
-		professor.AddToDatabase()
+		c.InsertProfessor(professor)
 	}
 }
 
@@ -295,7 +301,7 @@ func (scraper *PageScraper) FetchDocument() (document *goquery.Document, err err
 	return doc, nil
 }
 
-func scrapeProfessorData(s *goquery.Selection) (professor Professor) {
+func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 	// get the name of the professor
 	name := s.Find(cardNameSelector).Text()
 		
@@ -327,12 +333,12 @@ func scrapeProfessorData(s *goquery.Selection) (professor Professor) {
 
 	// parse profId to int
 	profId := strings.Split(hrefLink,"=")[1]
-	return Professor{Name: name, Difficulty: difficulty, Department: department, Rating: rating, RMPId: profId}
+	return model.Professor{Name: name, Difficulty: difficulty, Department: department, Rating: rating, RMPId: profId}
 }
 
-func (scraper *PageScraper) scrapeProfessors(doc *goquery.Document) []Professor {
+func (scraper *PageScraper) scrapeProfessors(doc *goquery.Document) []model.Professor {
 	// create a slice of professors
-	var professors []Professor
+	var professors []model.Professor
 
 	// use goquery to select the node with this class: "SearchResultsPage__SearchResultsWrapper-vhbycj-1 gxbBpy" and then select the html div node with no class
 	doc.Find(teacherCardSelector).Each(func(i int, s *goquery.Selection) {
