@@ -2,15 +2,15 @@ package controller
 
 import (
 	// postgres
-	"database/sql"
 	"fmt"
 	model "rmpParser/models"
 
-	_ "github.com/lib/pq"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 type controller struct { // make ctor private for singleton
-	db *sql.DB
+	db *gorm.DB
 }
 
 var instance *controller
@@ -24,65 +24,58 @@ func GetInstance() *controller {
 
 func (c *controller) ConnectToDatabase() {
 	fmt.Println("Connecting to database...")
-	db, err := sql.Open("postgres", "postgres://postgres@db:5432/postgres?sslmode=disable")
-	if err != nil {
-		panic(err)
-	}
-	// ping the database to make sure it is up and running
-	err = db.Ping()
+	db, err := gorm.Open("postgres", "user=postgres host=localhost port=5432 dbname=mydb sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("Connected to database!")
+
 	c.db = db
-
-	// Create Department table if it doesn't exist yet
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS  departments (
-		id SERIAL PRIMARY KEY,
-		name TEXT NOT NULL
-		base64Encoding TEXT NOT NULL
-);`)
-if err != nil {
-		fmt.Println(err)
-		return
+	c.CreateTables()
+	fmt.Println("Tables created successfully")
 }
 
-// Create Professor table
-_, err = db.Exec(`CREATE TABLE IF NOT EXISTS professors (
-		rmpId SERIAL PRIMARY KEY,
-		name TEXT NOT NULL,
-		rating FLOAT NOT NULL,
-		department TEXT NOT NULL,
-		difficulty FLOAT NOT NULL,
-		reviews JSONB,
-		courseCodes JSONB
-);`)
-if err != nil {
-		fmt.Println(err)
-		return
-}
-
-// Create Course table
-_, err = db.Exec(`CREATE TABLE IF NOT EXISTS  courses (
-		department TEXT NOT NULL,
-		number TEXT NOT NULL,
-		PRIMARY KEY (department, number)
-);`)
-if err != nil {
-		fmt.Println(err)
-		return
-}
-
-fmt.Println("Tables created successfully")
+func (c *controller) CreateTables() {
+	c.db.AutoMigrate(&model.Professor{}, &model.Review{}, &model.Department{}, &model.Course{})
+	c.db.Model(&model.Review{}).AddForeignKey("professor_id", "professors(id)", "CASCADE", "CASCADE")
+	c.db.Model(&model.Course{}).AddForeignKey("professor_id", "professors(id)", "CASCADE", "CASCADE")
+	// create a professor
+	c.db.Create(&model.Professor{Name: "John", Rating: 4.5, Difficulty: 3.5, Department: "CS", RMPId: "1234", Courses: []model.Course{{Number: "CS 123", Department: "CS"}, {Number: "CS 456", Department: "CS"}}})
 }
 
 func (c *controller) InsertDepartment(department model.Department) {
 	// insert department into database
-	_, err := c.db.Exec(`INSERT INTO departments (name, base64Encoding) VALUES ($1, $2)`, department.ID, department.Name)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Inserted department into database")
+	fmt.Println("Inserting department: ", department.Name)
+	c.db.Create(&department)
 }
 
+func (c *controller) InsertProfessor(professor model.Professor) {
+	// insert professor into database
+	// fmt.Println("Inserting professor: ", professor)
+	// for _, course := range professor.Courses {
+	// 	fmt.Println("Inserting course: ", course.Number)
+	// }
+	c.db.Create(&professor)
+}
+
+func (c *controller) InsertReview(review model.Review) {
+	// insert review into database
+	c.db.Create(&review)
+}
+
+func (c *controller) InsertCourse(course model.Course) {
+	// insert course into database
+	c.db.Create(&course)
+}
+
+func (c *controller) GetProfessors() []model.Professor {
+	var professors []model.Professor
+	c.db.Find(&professors)
+	return professors
+}
+
+func (c *controller) GetDepartments() []model.Department {
+	var departments []model.Department
+	c.db.Find(&departments)
+	return departments
+}

@@ -1,8 +1,9 @@
 package main
 
 import (
+	// "fmt"
+	"rmpParser/controller"
 	"rmpParser/worker"
-	"rmpParser/controller"	
 )
 
 func main() {
@@ -10,12 +11,13 @@ func main() {
 	c := controller.GetInstance()
 	// connect to the database
 	c.ConnectToDatabase()
-
+	// fmt.Println(c.GetProfessors())
 	// get all departments from the school
 	departments := worker.GetDepartments()
 	// fmt.Println(departments)
 	// get all professors from each department
 	for _, department := range departments {
-		worker.AddProfessorsFromDepartmentToDatabase(department.ID)
+		c.InsertDepartment(department)
+		worker.AddProfessorsFromDepartmentToDatabase(c, department.DepartmentBase64Code)
 	}
 }
