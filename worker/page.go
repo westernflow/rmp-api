@@ -11,7 +11,7 @@ import (
 
 	// "net/http"
 
-	"rmpParser/models"
+	model "rmpParser/models"
 
 	"github.com/PuerkitoBio/goquery"
 
@@ -40,7 +40,7 @@ import (
 // 	Date       string `json:"date"`
 // 	ReviewText string `json:"reviewText"`
 // 	Course     Course `json:"course"`
-// 	Helpful 	 float64 `json:"helpful"` // quality = helpful+clarity/2	
+// 	Helpful 	 float64 `json:"helpful"` // quality = helpful+clarity/2
 // 	Clarity 	 float64 `json:"clarity"`
 // }
 
@@ -48,7 +48,6 @@ import (
 // 	Department string `json:"department"`
 // 	Number     string    `json:"number"`
 // }
-
 
 type PageScraper struct {
 	Header string
@@ -66,7 +65,7 @@ type PageResult struct {
 // getDepartments populates the database with all departments at Western
 func GetDepartments() []model.Department {
 	newHomePageRequest := model.HomePageRequest{
-		Query:  homePageQuery,
+		Query: homePageQuery,
 		Variables: model.HPV{
 			Query: model.HomePageVariableQuery{
 				Text:     "",
@@ -77,7 +76,8 @@ func GetDepartments() []model.Department {
 		},
 	}
 	// create a request to get the departments
-	requestJson, err := json.Marshal(newHomePageRequest); if err != nil {
+	requestJson, err := json.Marshal(newHomePageRequest)
+	if err != nil {
 		panic(err)
 	}
 
@@ -90,7 +90,8 @@ func GetDepartments() []model.Department {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
 	client := &http.Client{}
-	resp, err := client.Do(req); if err != nil {
+	resp, err := client.Do(req)
+	if err != nil {
 		fmt.Println(err)
 	}
 
@@ -109,17 +110,15 @@ func GetDepartments() []model.Department {
 		fmt.Println(err)
 	}
 
-
 	// get the departments
 	var departments []model.Department
 	for _, department := range response.Data.Search.Teachers.Filters[0].Options {
 		departments = append(departments, model.Department{
-			Name: department.Value,
-			DepartmentBase64Code:  department.ID,
+			Name:                 department.Value,
+			DepartmentBase64Code: department.ID,
 		})
 	}
 	return departments
-	// TODO: add to databaes
 }
 
 // buildProfessor takes a ProfessorData model and transforms it into a Professor model
@@ -140,7 +139,7 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 
 		// attempt to parse edge.Node.Class into the course struct
 		// if it does not match the following regexp ^[a-zA-z][a-zA-z]+[0-9][0-9][0-9]$ then it is not a course and should be ignored
-		
+
 		// first remove spaces
 		edge.Node.Class = strings.ReplaceAll(edge.Node.Class, " ", "")
 		// then check if it matches the regexp
@@ -178,14 +177,16 @@ func GetProfessorData(id string) (professor model.Professor, err error) {
 	request := model.Request{Query: profQuery, Variables: variables}
 	// send the graphql request
 	// convert request to string
-	requestJson, err := json.Marshal(request); if err != nil {
+	requestJson, err := json.Marshal(request)
+	if err != nil {
 		fmt.Println("Error converting request to string:", err)
 	}
 	req, _ := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
 	client := &http.Client{}
-	resp, err := client.Do(req); if err != nil {
+	resp, err := client.Do(req)
+	if err != nil {
 		fmt.Println("Error sending request:", err)
 	}
 
@@ -196,10 +197,11 @@ func GetProfessorData(id string) (professor model.Professor, err error) {
 
 	// parse the response
 	var response model.Response
-	err = json.Unmarshal(body, &response); if err != nil {
+	err = json.Unmarshal(body, &response)
+	if err != nil {
 		fmt.Println("Error parsing response:", err)
 	}
-	
+
 	// get the professor data from the response
 	var newprof = buildProfessor(response.Data.ProfessorData)
 	return newprof, err
@@ -215,19 +217,20 @@ type Controller interface {
 // gets all professors from the given department
 func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code string) {
 	newHomePageRequest := model.HomePageRequest{
-		Query:  departmentQuery,
+		Query: departmentQuery,
 		Variables: model.HPV{
 			Query: model.HomePageVariableQuery{
-				Text:     "",
-				SchoolID: westernID,
-				Fallback: true,
+				Text:       "",
+				SchoolID:   westernID,
+				Fallback:   true,
 				Department: &departmentBase64Code,
 			},
 			SchoolId: westernID,
 		},
 	}
 	// create a request to get the departments
-	requestJson, err := json.Marshal(newHomePageRequest); if err != nil {
+	requestJson, err := json.Marshal(newHomePageRequest)
+	if err != nil {
 		panic(err)
 	}
 
@@ -240,7 +243,8 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code st
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
 	client := &http.Client{}
-	resp, err := client.Do(req); if err != nil {
+	resp, err := client.Do(req)
+	if err != nil {
 		fmt.Println(err)
 	}
 
@@ -262,7 +266,8 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code st
 	// for each professor in the response, get the professor's id and call getProfessorData
 	for _, professor := range response.Data.Search.Teachers.Edges {
 		professorID := professor.Node.ID
-		professor, err := GetProfessorData(professorID); if err != nil {
+		professor, err := GetProfessorData(professorID)
+		if err != nil {
 			fmt.Println("Error getting professor data:", err)
 		}
 		// add the professor to the database
@@ -279,14 +284,15 @@ func (scraper *PageScraper) FetchDocument() (document *goquery.Document, err err
 	// navigate to the page
 	fmt.Println("Initiating chromedp instance to page")
 	var body string
-	// use chromedp to navigate to the western professor list page, wait for the teacher card selector to be visible, keep clicking button until it is not visible, and then get the html of the page 
+	// use chromedp to navigate to the western professor list page, wait for the teacher card selector to be visible, keep clicking button until it is not visible, and then get the html of the page
 	err = chromedp.Run(ctx, chromedp.Tasks{
 		chromedp.Navigate(westernProfessorListURL),
 		chromedp.WaitVisible(teacherCardSelector),
 		// chromedp.Click(buttonSelector, chromedp.NodeVisible),
 		// chromedp.WaitNotVisible(buttonSelector),
 		chromedp.OuterHTML("html", &body),
-	}); if err != nil {
+	})
+	if err != nil {
 		fmt.Println("Error running chromedp instance:", err)
 	}
 
@@ -304,14 +310,16 @@ func (scraper *PageScraper) FetchDocument() (document *goquery.Document, err err
 func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 	// get the name of the professor
 	name := s.Find(cardNameSelector).Text()
-		
+
 	// get the difficulty of the professor
 	enjoymentAndDifficulty := s.Find(cardDifficultySelector).Text()
-	_, difficultyString, err := parseEnjoymentAndDifficulty(enjoymentAndDifficulty); if err != nil {
+	_, difficultyString, err := parseEnjoymentAndDifficulty(enjoymentAndDifficulty)
+	if err != nil {
 		fmt.Println("Error parsing enjoyment and difficulty:", err)
 	}
 
-	difficulty, err := strconv.ParseFloat(difficultyString, 64); if err != nil {
+	difficulty, err := strconv.ParseFloat(difficultyString, 64)
+	if err != nil {
 		fmt.Println("Error parsing difficulty")
 	}
 
@@ -324,7 +332,8 @@ func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 	// get the quality of the professor from the second div in the selected node
 	ratingString := ratingSection.Find("div").Eq(1).Text()
 
-	rating, err := strconv.ParseFloat(ratingString, 64); if err != nil {
+	rating, err := strconv.ParseFloat(ratingString, 64)
+	if err != nil {
 		fmt.Println("Error parsing quality")
 	}
 
@@ -332,7 +341,7 @@ func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 	hrefLink, _ := s.Attr("href")
 
 	// parse profId to int
-	profId := strings.Split(hrefLink,"=")[1]
+	profId := strings.Split(hrefLink, "=")[1]
 	return model.Professor{Name: name, Difficulty: difficulty, Department: department, Rating: rating, RMPId: profId}
 }
 

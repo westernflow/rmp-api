@@ -9,7 +9,7 @@ import (
 	"github.com/valyala/fastjson"
 
 	"rmpParser/controller"
-	"rmpParser/worker"
+	"rmpParser/handler"
 )
 
 func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -21,6 +21,7 @@ func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 		name := request.QueryStringParameters["name"]
 		if name != "" {
 			ApiResponse = events.APIGatewayProxyResponse{Body: "Hey " + name + " welcome! ", StatusCode: 200}
+
 		} else {
 			ApiResponse = events.APIGatewayProxyResponse{Body: "Error: Query Parameter name missing", StatusCode: 500}
 		}
@@ -48,6 +49,9 @@ func main() {
 	}
 	// lambda.Start(HandleRequest)
 	getData()
+
+	// this should show all the professors in the database
+	fmt.Println(handler.GetProfessors())
 }
 
 func getData() {
@@ -56,13 +60,6 @@ func getData() {
 	// connect to the database
 	c.ConnectToDatabase()
 
-	// fmt.Println(c.GetProfessors())
-	// get all departments from the school
-	departments := worker.GetDepartments()
-	// fmt.Println(departments)
-	// get all professors from each department
-	for _, department := range departments {
-		c.InsertDepartment(department)
-		worker.AddProfessorsFromDepartmentToDatabase(c, department.DepartmentBase64Code)
-	}
+	// populate the database (dont do this if you already have data in the database)
+	// c.PopulateDatabase()
 }
