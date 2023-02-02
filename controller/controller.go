@@ -3,6 +3,7 @@ package controller
 import (
 	// postgres
 	"fmt"
+	"os"
 	model "rmpParser/models"
 
 	"github.com/jinzhu/gorm"
@@ -24,7 +25,8 @@ func GetInstance() *controller {
 
 func (c *controller) ConnectToDatabase() {
 	fmt.Println("Connecting to database...")
-	db, err := gorm.Open("postgres", "user=postgres host=localhost port=5432 dbname=mydb sslmode=disable")
+	uri := os.Getenv("RDS_URI")
+	db, err := gorm.Open("postgres", uri)
 	if err != nil {
 		panic(err)
 	}
