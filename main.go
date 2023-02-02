@@ -4,7 +4,7 @@ import (
     "fmt"
 
     "github.com/aws/aws-lambda-go/events"
-    "github.com/aws/aws-lambda-go/lambda"
+    _ "github.com/aws/aws-lambda-go/lambda"
     "github.com/valyala/fastjson"
 
     "rmpParser/controller"
@@ -24,7 +24,7 @@ func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProx
             ApiResponse = events.APIGatewayProxyResponse{Body: "Error: Query Parameter name missing", StatusCode: 500}
         }
 
-    case "POST":    
+    case "POST":
         // validates json and returns error if not working
         err := fastjson.Validate(request.Body)
 
@@ -41,7 +41,8 @@ func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 }
 
 func main() {
-    lambda.Start(HandleRequest)
+    // lambda.Start(HandleRequest)
+	getData()
 }
 
 func getData() {
@@ -49,6 +50,7 @@ func getData() {
 	c := controller.GetInstance()
 	// connect to the database
 	c.ConnectToDatabase()
+
 	// fmt.Println(c.GetProfessors())
 	// get all departments from the school
 	departments := worker.GetDepartments()
