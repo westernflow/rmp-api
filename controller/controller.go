@@ -24,7 +24,8 @@ func GetInstance() *controller {
 
 func (c *controller) ConnectToDatabase() {
 	fmt.Println("Connecting to database...")
-	db, err := gorm.Open("postgres", "user=postgres host=localhost port=5432 dbname=mydb sslmode=disable")
+	uri := "postgres://postgres:westernflow@mydb.cqifftzznco3.us-east-2.rds.amazonaws.com/mydb"
+	db, err := gorm.Open("postgres", uri)
 	if err != nil {
 		panic(err)
 	}
