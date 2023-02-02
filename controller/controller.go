@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	model "rmpParser/models"
+	"rmpParser/worker"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -42,7 +43,21 @@ func (c *controller) CreateTables() {
 	c.db.Model(&model.Review{}).AddForeignKey("professor_id", "professors(id)", "CASCADE", "CASCADE")
 	c.db.Model(&model.Course{}).AddForeignKey("professor_id", "professors(id)", "CASCADE", "CASCADE")
 	// create a professor
-	c.db.Create(&model.Professor{Name: "John", Rating: 4.5, Difficulty: 3.5, Department: "CS", RMPId: "1234", Courses: []model.Course{{Number: "CS 123", Department: "CS"}, {Number: "CS 456", Department: "CS"}}})
+	// c.db.Create(&model.Professor{Name: "John", Rating: 4.5, Difficulty: 3.5, Department: "CS", RMPId: "1234", Courses: []model.Course{{Number: "CS 123", Department: "CS"}, {Number: "CS 456", Department: "CS"}}})
+}
+
+// populate databse with all professors from all departments
+func (c *controller) PopulateDatabase() {
+
+	fmt.Println("Populating database...")
+	// get all departments from the school
+	departments := worker.GetDepartments()
+
+	// get all professors from each department and insert into database
+	for _, department := range departments {
+		c.InsertDepartment(department)
+		worker.AddProfessorsFromDepartmentToDatabase(c, department.DepartmentBase64Code)
+	}
 }
 
 func (c *controller) InsertDepartment(department model.Department) {
