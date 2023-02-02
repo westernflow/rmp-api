@@ -9,9 +9,11 @@ services:
   db:
     image: postgres
     environment:
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: westernflow
-        POSTGRES_DB: mydb
-        # POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD}
     ports:
       - "5432:5432"
+    env_file:
+      - .env
