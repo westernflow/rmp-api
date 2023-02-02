@@ -9,6 +9,9 @@ services:
   db:
     image: postgres
     environment:
-      POSTGRES_HOST_AUTH_METHOD: trust
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: westernflow
+        POSTGRES_DB: mydb
+        # POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
