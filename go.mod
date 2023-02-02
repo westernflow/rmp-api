@@ -4,8 +4,10 @@ go 1.18
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.0
+	github.com/aws/aws-lambda-go v1.37.0
 	github.com/chromedp/chromedp v0.8.7
 	github.com/jinzhu/gorm v1.9.16
+	github.com/valyala/fastjson v1.6.4
 )
 
 require (
