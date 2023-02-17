@@ -103,12 +103,12 @@ func (c *controller) InsertProfessor(department model.Department, professor mode
 		// check if department.Name exists in professor.Departments
 		departmentExist := false
 		for _, existingDepartment := range existingProfessor.Departments {
-			if existingDepartment == department.Name {
+			if existingDepartment.Name == department.Name {
 				departmentExist = true
 			}
 		}
 		if !departmentExist {
-			existingProfessor.Departments = append(existingProfessor.Departments, department.Name)
+			existingProfessor.Departments = append(existingProfessor.Departments, department)
 		}
 
 		// update the professor in the database

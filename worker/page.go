@@ -129,8 +129,13 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 	professor.Rating = node.AvgRating
 	professor.Difficulty = node.AvgDifficulty
 	// array of department add to it
-	var departments []string
-	departments = append(departments, node.Department)
+	var departments []model.Department
+	// create new department model
+	newDepartment := model.Department{
+		Name:                 node.Department,
+		DepartmentBase64Code: node.DepartmentID,
+	}
+	departments = append(departments, newDepartment)
 	professor.Departments = departments
 
 	// get the reviews from the professor data
