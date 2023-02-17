@@ -123,8 +123,6 @@ func GetDepartments() []model.Department {
 
 // buildProfessor takes a ProfessorData model and transforms it into a Professor model
 func buildProfessor(node model.ProfessorData) model.Professor {
-	fmt.Println("building professor: " + node.FirstName + " " + node.LastName)
-	fmt.Println(node.Ratings.Edges)
 	var professor model.Professor
 	professor.Name = node.FirstName + " " + node.LastName
 	professor.RMPId = node.ID
@@ -150,6 +148,7 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 		// first get course dept -- it is the characters before the first number
 		re := regexp.MustCompile(`[0-9]`)
 		index := re.FindStringIndex(edge.Node.Class)[0]
+		review.ProfessorID = professor.RMPId
 		review.Course.Department = edge.Node.Class[:index]
 		// then get the course number -- it is the characters after the first number
 		review.Course.Number = edge.Node.Class[index:]
@@ -160,13 +159,9 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 		review.ReviewText = edge.Node.Comment
 		review.Helpful = edge.Node.HelpfulRating
 		review.Clarity = edge.Node.ClarityRating
-		fmt.Println("------------------")
-		fmt.Println(review)
-		fmt.Println("------------------")
 		reviews = append(reviews, review)
 	}
 	professor.Reviews = reviews
-	fmt.Println("THIS THE PROFESOR REVIEW ABDZ", professor.Reviews)
 	return professor
 }
 
@@ -210,8 +205,9 @@ func GetProfessorData(id string) (professor model.Professor, err error) {
 type Controller interface {
 	InsertDepartment(department model.Department)
 	InsertProfessor(professor model.Professor)
-	InsertReview(review model.Review)
 	InsertCourse(course model.Course)
+	InsertReview(review model.Review)
+	InsertReviews(reviews []model.Review)
 }
 
 // gets all professors from the given department

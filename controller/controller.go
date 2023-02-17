@@ -34,16 +34,25 @@ func (c *controller) ConnectToDatabase() {
 	fmt.Println("Connected to database!")
 
 	c.db = db
+}
+
+func (c *controller) InitializeDatabase() {
+	fmt.Println("Droping tables...")
+	c.DropTables()
+	fmt.Println("Creating tables...")
 	c.CreateTables()
-	fmt.Println("Tables created successfully")
+	fmt.Println("Database initialized!")
+}
+
+func (c *controller) DropTables() {
+	// drop table if it exists in dependency order
+	c.db.DropTableIfExists(&model.Review{}, &model.Course{}, &model.Professor{}, &model.Department{})
 }
 
 func (c *controller) CreateTables() {
 	c.db.AutoMigrate(&model.Professor{}, &model.Review{}, &model.Department{}, &model.Course{})
-	c.db.Model(&model.Review{}).AddForeignKey("professor_id", "professors(id)", "CASCADE", "CASCADE")
-	c.db.Model(&model.Course{}).AddForeignKey("professor_id", "professors(id)", "CASCADE", "CASCADE")
-	// create a professor
-	// c.db.Create(&model.Professor{Name: "John", Rating: 4.5, Difficulty: 3.5, Department: "CS", RMPId: "1234", Courses: []model.Course{{Number: "CS 123", Department: "CS"}, {Number: "CS 456", Department: "CS"}}})
+	c.db.Model(&model.Professor{}).AddUniqueIndex("idx_rmp_id", "rmp_id")
+	c.db.Model(&model.Review{}).AddForeignKey("professor_id", "professors(rmp_id)", "CASCADE", "CASCADE")
 }
 
 // populate databse with all professors from all departments
@@ -54,7 +63,9 @@ func (c *controller) PopulateDatabase() {
 	departments := worker.GetDepartments()
 
 	// get all professors from each department and insert into database
-	for _, department := range departments {
+	for i, department := range departments {
+		// displays percentages rounded to 2 decimal places
+		fmt.Println("Fetching data from department: ", department.Name, "; Percentage remaining: ", fmt.Sprintf("%.2f", float64(i)/float64(len(departments))*100), "%")
 		c.InsertDepartment(department)
 		worker.AddProfessorsFromDepartmentToDatabase(c, department.DepartmentBase64Code)
 	}
@@ -67,12 +78,31 @@ func (c *controller) InsertDepartment(department model.Department) {
 }
 
 func (c *controller) InsertProfessor(professor model.Professor) {
+	reviews := professor.Reviews
+	professor.Reviews = nil
 	// insert professor into database
-	// fmt.Println("Inserting professor: ", professor)
-	// for _, course := range professor.Courses {
-	// 	fmt.Println("Inserting course: ", course.Number)
-	// }
-	c.db.Create(&professor)
+	// first check if a professor exists in the current database with the same RMPID:
+	var existingProfessor model.Professor
+	c.db.Where("rmp_id = ?", professor.RMPId).First(&existingProfessor)
+	if existingProfessor.RMPId != "" {
+		// if a professor exists, update the professor with the new data
+		fmt.Println("Exist professor", existingProfessor.Name, "with id", existingProfessor.RMPId, existingProfessor)
+		fmt.Println("New professor", professor.Name, "with id", professor.RMPId, professor)
+		c.db.Model(&existingProfessor).Updates(professor)
+		professor = existingProfessor
+	} else {
+		// if a professor does not exist, insert the professor into the database
+		c.db.Create(&professor)
+	}
+	// insert reviews into database
+	c.InsertReviews(reviews)
+}
+
+func (c *controller) InsertReviews(reviews []model.Review) {
+	// insert reviews into database
+	for _, review := range reviews {
+		c.InsertReview(review)
+	}
 }
 
 func (c *controller) InsertReview(review model.Review) {

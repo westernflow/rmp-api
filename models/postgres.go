@@ -18,7 +18,7 @@ type Professor struct {
 
 type Review struct {
 	gorm.Model
-	ProfessorID uint    `json:"professorId"`
+	ProfessorID string  `json:"professorId" gorm:"column:professor_id"`
 	Professor   string  `json:"professor"`
 	Quality     float64 `json:"quality"`
 	Difficulty  float64 `json:"difficulty"`
@@ -31,7 +31,7 @@ type Review struct {
 
 type Course struct {
 	gorm.Model
-	ProfessorID uint   `json:"professorId"`
+	ProfessorID string `json:"professorId" gorm:"column:professor_id"`
 	Department  string `json:"department"`
 	Number      string `json:"number"`
 }

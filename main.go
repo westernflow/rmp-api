@@ -4,12 +4,9 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	_ "github.com/aws/aws-lambda-go/lambda"
-	"github.com/joho/godotenv"
 	"github.com/valyala/fastjson"
-
-	"rmpParser/controller"
-	"rmpParser/handler"
 )
 
 func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -42,24 +39,6 @@ func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProx
 	return ApiResponse, nil
 }
 
-func main() {
-	err := godotenv.Load()
-	if err != nil {
-		panic(err)
-	}
-	// lambda.Start(HandleRequest)
-	getData()
-
-	// this should show all the professors in the database
-	fmt.Println(handler.GetProfessors())
-}
-
-func getData() {
-	// create a controller
-	c := controller.GetInstance()
-	// connect to the database
-	c.ConnectToDatabase()
-
-	// populate the database (dont do this if you already have data in the database)
-	// c.PopulateDatabase()
+func main(){
+    lambda.Start(HandleRequest)
 }
