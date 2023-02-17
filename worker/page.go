@@ -128,7 +128,10 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 	professor.RMPId = node.ID
 	professor.Rating = node.AvgRating
 	professor.Difficulty = node.AvgDifficulty
-	professor.Department = node.Department
+	// array of department add to it
+	var departments []string
+	departments = append(departments, node.Department)
+	professor.Departments = departments
 
 	// get the reviews from the professor data
 	var reviews []model.Review
@@ -204,10 +207,11 @@ func GetProfessorData(id string) (professor model.Professor, err error) {
 
 type Controller interface {
 	InsertDepartment(department model.Department)
-	InsertProfessor(professor model.Professor)
+	InsertProfessor(department model.Department, professor model.Professor)
 	InsertCourse(course model.Course)
 	InsertReview(review model.Review)
 	InsertReviews(reviews []model.Review)
+	GetDepartmentByBase64Code(base64Code string) (department model.Department, err error)
 }
 
 // gets all professors from the given department
@@ -259,6 +263,12 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code st
 		fmt.Println(err)
 	}
 
+	// search the department database for the department based on the base64 code
+	dpt, err := c.GetDepartmentByBase64Code(departmentBase64Code)
+	if err != nil {
+		fmt.Println("Error getting department:", err)
+	}
+
 	// for each professor in the response, get the professor's id and call getProfessorData
 	for _, professor := range response.Data.Search.Teachers.Edges {
 		professorID := professor.Node.ID
@@ -267,7 +277,7 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code st
 			fmt.Println("Error getting professor data:", err)
 		}
 		// add the professor to the database
-		c.InsertProfessor(professor)
+		c.InsertProfessor(dpt, professor)
 	}
 }
 
@@ -320,7 +330,7 @@ func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 	}
 
 	// get the department of the professor
-	department := s.Find(cardDepartmentSelector).Text()
+	// departments := s.Find(cardDepartmentSelector).Text()
 
 	// get the quality card section of the professor
 	ratingSection := s.Find(cardRatingSectionSelector)
@@ -338,7 +348,7 @@ func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 
 	// parse profId to int
 	profId := strings.Split(hrefLink, "=")[1]
-	return model.Professor{Name: name, Difficulty: difficulty, Department: department, Rating: rating, RMPId: profId}
+	return model.Professor{Name: name, Difficulty: difficulty, Rating: rating, RMPId: profId}
 }
 
 func (scraper *PageScraper) scrapeProfessors(doc *goquery.Document) []model.Professor {

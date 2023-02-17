@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
 	"rmpParser/controller"
 	"rmpParser/handler"
+	"rmpParser/worker"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -12,7 +14,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// lambda.Start(HandleRequest)
 	getData()
 
 	// this should show all the professors in the database
@@ -29,6 +30,9 @@ func getData() {
 	// initialize the database
 	c.InitializeDatabase()
 
+	// get all departments
+	departments := worker.GetDepartments()
+	
 	// populate the database (dont do this if you already have data in the database)
-	c.PopulateDatabase()
+	c.PopulateDatabase(departments)
 }

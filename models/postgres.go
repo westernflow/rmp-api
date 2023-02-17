@@ -10,7 +10,7 @@ type Professor struct {
 	Name       string  `json:"name"`
 	RMPId      string  `json:"rmpId"`
 	Rating     float64 `json:"rating"`
-	Department string  `json:"department"`
+	Departments []string  `json:"department"`
 	Difficulty float64 `json:"difficulty"`
 	Reviews    []Review
 	Courses    []Course

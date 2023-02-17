@@ -4,6 +4,7 @@ import (
 	// postgres
 	"fmt"
 	"os"
+	"reflect"
 	model "rmpParser/models"
 	"rmpParser/worker"
 
@@ -45,8 +46,14 @@ func (c *controller) InitializeDatabase() {
 }
 
 func (c *controller) DropTables() {
-	// drop table if it exists in dependency order
-	c.db.DropTableIfExists(&model.Review{}, &model.Course{}, &model.Professor{}, &model.Department{})
+	// drop tables in dependency order
+	for _, model := range []interface{}{&model.Review{}, &model.Course{}, &model.Professor{}, &model.Department{}} {
+		if err := c.db.DropTableIfExists(model).Error; err != nil {
+			fmt.Printf("Error dropping table %v: %v\n", reflect.TypeOf(model).Elem().Name(), err)
+			return
+		}
+		fmt.Printf("Dropped table %v\n", reflect.TypeOf(model).Elem().Name())
+	}
 }
 
 func (c *controller) CreateTables() {
@@ -56,12 +63,8 @@ func (c *controller) CreateTables() {
 }
 
 // populate databse with all professors from all departments
-func (c *controller) PopulateDatabase() {
-
+func (c *controller) PopulateDatabase(departments []model.Department) {
 	fmt.Println("Populating database...")
-	// get all departments from the school
-	departments := worker.GetDepartments()
-
 	// get all professors from each department and insert into database
 	for i, department := range departments {
 		// displays percentages rounded to 2 decimal places
@@ -71,13 +74,19 @@ func (c *controller) PopulateDatabase() {
 	}
 }
 
+func (c *controller) GetDepartmentByBase64Code(base64Code string) (department model.Department, err error) {
+	// get department from database
+	err = c.db.Where("department_base64_code = ?", base64Code).First(&department).Error
+	return
+}
+
 func (c *controller) InsertDepartment(department model.Department) {
 	// insert department into database
 	fmt.Println("Inserting department: ", department.Name)
 	c.db.Create(&department)
 }
 
-func (c *controller) InsertProfessor(professor model.Professor) {
+func (c *controller) InsertProfessor(department model.Department, professor model.Professor) {
 	reviews := professor.Reviews
 	professor.Reviews = nil
 	// insert professor into database
@@ -86,10 +95,24 @@ func (c *controller) InsertProfessor(professor model.Professor) {
 	c.db.Where("rmp_id = ?", professor.RMPId).First(&existingProfessor)
 	if existingProfessor.RMPId != "" {
 		// if a professor exists, update the professor with the new data
-		fmt.Println("Exist professor", existingProfessor.Name, "with id", existingProfessor.RMPId, existingProfessor)
-		fmt.Println("New professor", professor.Name, "with id", professor.RMPId, professor)
-		c.db.Model(&existingProfessor).Updates(professor)
-		professor = existingProfessor
+		fmt.Println("Exist professor", existingProfessor.Name, "with id", existingProfessor.RMPId, existingProfessor.Departments)
+		fmt.Println("New professor", professor.Name, "with id", professor.RMPId, professor.Departments)
+		fmt.Println("Adding department", department.Name, "to professor", existingProfessor.Name)
+		// iterate through each department in existingprofessor.departments and check if it exists in professor.departments
+		// if it does not exist, add it to professor.departments
+		// check if department.Name exists in professor.Departments
+		departmentExist := false
+		for _, existingDepartment := range existingProfessor.Departments {
+			if existingDepartment == department.Name {
+				departmentExist = true
+			}
+		}
+		if !departmentExist {
+			existingProfessor.Departments = append(existingProfessor.Departments, department.Name)
+		}
+
+		// update the professor in the database
+		c.db.Model(&existingProfessor).Update(&professor)
 	} else {
 		// if a professor does not exist, insert the professor into the database
 		c.db.Create(&professor)
