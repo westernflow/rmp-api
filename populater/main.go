@@ -21,9 +21,6 @@ func main() {
 		panic(err)
 	}
 	getData(dropTables)
-
-	// this should show all the professors in the database
-	fmt.Println(handler.GetProfessors())
 }
 
 func getData(dropTables bool) {
