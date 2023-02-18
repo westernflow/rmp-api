@@ -94,13 +94,6 @@ func (c *controller) InsertProfessor(department model.Department, professor mode
 	var existingProfessor model.Professor
 	c.db.Where("rmp_id = ?", professor.RMPId).First(&existingProfessor)
 	if existingProfessor.RMPId != "" {
-		// if a professor exists, update the professor with the new data
-		fmt.Println("Exist professor", existingProfessor.Name, "with id", existingProfessor.RMPId, existingProfessor.Departments)
-		fmt.Println("New professor", professor.Name, "with id", professor.RMPId, professor.Departments)
-		fmt.Println("Adding department", department.Name, "to professor", existingProfessor.Name)
-		// iterate through each department in existingprofessor.departments and check if it exists in professor.departments
-		// if it does not exist, add it to professor.departments
-		// check if department.Name exists in professor.Departments
 		departmentExist := false
 		for _, existingDepartment := range existingProfessor.Departments {
 			if existingDepartment.Name == department.Name {
@@ -109,6 +102,7 @@ func (c *controller) InsertProfessor(department model.Department, professor mode
 		}
 		if !departmentExist {
 			existingProfessor.Departments = append(existingProfessor.Departments, department)
+			fmt.Println("Added department", department.Name, "to professor", existingProfessor.Name)
 		}
 
 		// update the professor in the database
