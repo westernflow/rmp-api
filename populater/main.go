@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"rmpParser/controller"
-	"rmpParser/handler"
 	model "rmpParser/models"
 	"rmpParser/worker"
 
