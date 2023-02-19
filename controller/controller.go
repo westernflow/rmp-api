@@ -6,7 +6,7 @@ import (
 	"os"
 	"reflect"
 	model "rmpParser/models"
-	"rmpParser/worker"
+	// "rmpParser/worker"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -28,6 +28,7 @@ func GetInstance() *controller {
 func (c *controller) ConnectToDatabase() {
 	fmt.Println("Connecting to database...")
 	uri := os.Getenv("RDS_URI")
+	fmt.Println("URI: ", uri)
 	db, err := gorm.Open("postgres", uri)
 	if err != nil {
 		panic(err)
@@ -70,7 +71,7 @@ func (c *controller) PopulateDatabase(departments []model.Department) {
 		// displays percentages rounded to 2 decimal places
 		fmt.Println("Fetching data from department: ", department.Name, "; Percentage remaining: ", fmt.Sprintf("%.2f", float64(i)/float64(len(departments))*100), "%")
 		c.InsertDepartment(department)
-		worker.AddProfessorsFromDepartmentToDatabase(c, department.DepartmentBase64Code)
+		// worker.AddProfessorsFromDepartmentToDatabase(c, department.DepartmentBase64Code)
 	}
 }
 
@@ -79,6 +80,29 @@ func (c *controller) GetDepartmentByBase64Code(base64Code string) (department mo
 	err = c.db.Where("department_base64_code = ?", base64Code).First(&department).Error
 	return
 }
+
+func (c *controller) GetAllProfessors() []model.Professor {
+	var professors []model.Professor
+	c.db.Find(&professors)
+	return professors
+}
+
+func (c *controller) CloseConnection() {
+	c.db.Close()
+}
+
+func (c *controller) GetAllReviews() []model.Review {
+	var reviews []model.Review
+	c.db.Find(&reviews)
+	return reviews
+}
+
+func (c *controller) GetAllDepartments() []model.Department {
+	var departments []model.Department
+	c.db.Find(&departments)
+	return departments
+}
+
 
 func (c *controller) InsertDepartment(department model.Department) {
 	// insert department into database

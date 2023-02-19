@@ -2,6 +2,7 @@ package worker
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -63,7 +64,7 @@ type PageResult struct {
 }
 
 // getDepartments populates the database with all departments at Western
-func GetDepartments() []model.Department {
+func GetDepartments() []model.MongoDepartment {
 	newHomePageRequest := model.HomePageRequest{
 		Query: homePageQuery,
 		Variables: model.HPV{
@@ -111,27 +112,42 @@ func GetDepartments() []model.Department {
 	}
 
 	// get the departments
-	var departments []model.Department
+	var departments []model.MongoDepartment
 	for _, department := range response.Data.Search.Teachers.Filters[0].Options {
-		departments = append(departments, model.Department{
+		// decode the base64 department.ID to a string
+		decode, err := base64.StdEncoding.DecodeString(department.ID)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		base64 := string(decode)
+		parsedDept := strings.Split(base64, "-")
+		if len(parsedDept) != 2 {
+			continue
+		}
+		base64 = parsedDept[1]
+		departments = append(departments, model.MongoDepartment{
 			Name:                 department.Value,
 			DepartmentBase64Code: department.ID,
+			DepartmentNumber:     base64,
 		})
 	}
 	return departments
 }
 
 // buildProfessor takes a ProfessorData model and transforms it into a Professor model
-func buildProfessor(node model.ProfessorData) model.Professor {
-	var professor model.Professor
+func buildProfessor(node model.ProfessorData) model.MongoProfessor {
+	var professor model.MongoProfessor
 	professor.Name = node.FirstName + " " + node.LastName
 	professor.RMPId = node.ID
 	professor.Rating = node.AvgRating
 	professor.Difficulty = node.AvgDifficulty
 	// array of department add to it
-	var departments []model.Department
+	var departments []model.MongoDepartment
 	// create new department model
-	newDepartment := model.Department{
+	// get the lowercase string from node.Department
+	node.Department = strings.ToLower(node.Department)
+	newDepartment := model.MongoDepartment{
 		Name:                 node.Department,
 		DepartmentBase64Code: node.DepartmentID,
 	}
@@ -139,9 +155,9 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 	professor.Departments = departments
 
 	// get the reviews from the professor data
-	var reviews []model.Review
+	var reviews []model.MongoReview
 	for _, edge := range node.Ratings.Edges {
-		var review model.Review
+		var review model.MongoReview
 
 		// attempt to parse edge.Node.Class into the course struct
 		// if it does not match the following regexp ^[a-zA-z][a-zA-z]+[0-9][0-9][0-9]$ then it is not a course and should be ignored
@@ -154,12 +170,12 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 		}
 		// if it does match, then parse it into the course struct
 		// first get course dept -- it is the characters before the first number
-		re := regexp.MustCompile(`[0-9]`)
-		index := re.FindStringIndex(edge.Node.Class)[0]
+		// re := regexp.MustCompile(`[0-9]`)
+		// index := re.FindStringIndex(edge.Node.Class)[0]
 		review.ProfessorID = professor.RMPId
-		review.Course.Department = edge.Node.Class[:index]
+		// review.Course.Department = edge.Node.Class[:index]
 		// then get the course number -- it is the characters after the first number
-		review.Course.Number = edge.Node.Class[index:]
+		// review.Course.Number = edge.Node.Class[index:]
 		review.Professor = professor.Name
 		review.Quality = edge.Node.HelpfulRating
 		review.Difficulty = edge.Node.ClarityRating
@@ -174,7 +190,7 @@ func buildProfessor(node model.ProfessorData) model.Professor {
 }
 
 // GetProfessorData populates the database with a professor at western
-func GetProfessorData(id string) (professor model.Professor, err error) {
+func GetProfessorData(id string) (professor model.MongoProfessor, err error) {
 	variables := make(map[string]interface{})
 	variables["id"] = id
 	request := model.Request{Query: profQuery, Variables: variables}
@@ -211,16 +227,13 @@ func GetProfessorData(id string) (professor model.Professor, err error) {
 }
 
 type Controller interface {
-	InsertDepartment(department model.Department)
-	InsertProfessor(department model.Department, professor model.Professor)
-	InsertCourse(course model.Course)
-	InsertReview(review model.Review)
-	InsertReviews(reviews []model.Review)
-	GetDepartmentByBase64Code(base64Code string) (department model.Department, err error)
+	InsertDepartment(department model.MongoDepartment)
+	InsertProfessor(department model.MongoDepartment, professor model.MongoProfessor)
+	PopulateDatabase(departments []model.MongoDepartment)
 }
 
 // gets all professors from the given department
-func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code string) {
+func AddProfessorsFromDepartmentToDatabase(c Controller, department model.MongoDepartment) {
 	newHomePageRequest := model.HomePageRequest{
 		Query: departmentQuery,
 		Variables: model.HPV{
@@ -228,7 +241,7 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code st
 				Text:       "",
 				SchoolID:   westernID,
 				Fallback:   true,
-				Department: &departmentBase64Code,
+				Department: &department.DepartmentBase64Code,
 			},
 			SchoolId: westernID,
 		},
@@ -268,12 +281,6 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code st
 		fmt.Println(err)
 	}
 
-	// search the department database for the department based on the base64 code
-	dpt, err := c.GetDepartmentByBase64Code(departmentBase64Code)
-	if err != nil {
-		fmt.Println("Error getting department:", err)
-	}
-
 	// for each professor in the response, get the professor's id and call getProfessorData
 	for _, professor := range response.Data.Search.Teachers.Edges {
 		professorID := professor.Node.ID
@@ -282,7 +289,7 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, departmentBase64Code st
 			fmt.Println("Error getting professor data:", err)
 		}
 		// add the professor to the database
-		c.InsertProfessor(dpt, professor)
+		c.InsertProfessor(department, professor)
 	}
 }
 
@@ -318,7 +325,7 @@ func (scraper *PageScraper) FetchDocument() (document *goquery.Document, err err
 	return doc, nil
 }
 
-func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
+func scrapeProfessorData(s *goquery.Selection) (professor model.MongoProfessor) {
 	// get the name of the professor
 	name := s.Find(cardNameSelector).Text()
 
@@ -353,12 +360,12 @@ func scrapeProfessorData(s *goquery.Selection) (professor model.Professor) {
 
 	// parse profId to int
 	profId := strings.Split(hrefLink, "=")[1]
-	return model.Professor{Name: name, Difficulty: difficulty, Rating: rating, RMPId: profId}
+	return model.MongoProfessor{Name: name, Difficulty: difficulty, Rating: rating, RMPId: profId}
 }
 
-func (scraper *PageScraper) scrapeProfessors(doc *goquery.Document) []model.Professor {
+func (scraper *PageScraper) scrapeProfessors(doc *goquery.Document) []model.MongoProfessor {
 	// create a slice of professors
-	var professors []model.Professor
+	var professors []model.MongoProfessor
 
 	// use goquery to select the node with this class: "SearchResultsPage__SearchResultsWrapper-vhbycj-1 gxbBpy" and then select the html div node with no class
 	doc.Find(teacherCardSelector).Each(func(i int, s *goquery.Selection) {

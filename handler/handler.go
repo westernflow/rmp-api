@@ -1,16 +1,16 @@
 package handler
 
-import (
-	"rmpParser/controller"
-	model "rmpParser/models"
-)
+// import (
+// 	"rmpParser/controller"
+// 	model "rmpParser/models"
+// )
 
-func GetProfessors() []model.Professor {
-	c := controller.GetInstance()
-	return c.GetProfessors()
-}
+// func GetProfessors() []model.MongoProfessor {
+// 	c := controller.GetInstance()
+// 	return c.GetProfessors()
+// }
 
-func GetDepartments() []model.Department {
-	c := controller.GetInstance()
-	return c.GetDepartments()
-}
+// func GetDepartments() []model.MongoDepartment {
+// 	c := controller.GetInstance()
+// 	return c.GetDepartments()
+// }

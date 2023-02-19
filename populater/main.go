@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"rmpParser/controller"
 	model "rmpParser/models"
+	controller "rmpParser/mongoController"
 	"rmpParser/worker"
 
-	"github.com/joho/godotenv"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -28,7 +29,7 @@ func getData(dropTables bool) {
 
 	// connect to the database
 	c.ConnectToDatabase()
-	
+
 	// initialize the database
 	if dropTables {
 		c.InitializeDatabase()
@@ -36,30 +37,29 @@ func getData(dropTables bool) {
 
 	// get all departments
 	departments := worker.GetDepartments()
-	
+
 	if !dropTables {
 		departments = getDepartmentSplice(departments, "business")
 	}
 
-	// populate the database (dont do this if you already have data in the database)
 	c.PopulateDatabase(departments)
 }
 
-func getDepartment(departments []model.Department, name string) []model.Department {
+func getDepartment(departments []model.MongoDepartment, name string) []model.MongoDepartment {
 	for i, department := range departments {
 		if department.Name == name {
-			return departments[i:i+1]
+			return departments[i : i+1]
 		}
 	}
-	return []model.Department{}
+	return []model.MongoDepartment{}
 }
 
-func getDepartmentSplice(departments []model.Department, name string) []model.Department {
+func getDepartmentSplice(departments []model.MongoDepartment, name string) []model.MongoDepartment {
 	// finds first occurence of name, returns all departments after that
 	for i, department := range departments {
-			if department.Name == name {
+		if department.Name == name {
 			return departments[i:]
 		}
 	}
-	return []model.Department{}
+	return []model.MongoDepartment{}
 }
