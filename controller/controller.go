@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	model "rmpParser/models"
+
 	// "rmpParser/worker"
 
 	"github.com/jinzhu/gorm"
@@ -102,7 +103,6 @@ func (c *controller) GetAllDepartments() []model.Department {
 	c.db.Find(&departments)
 	return departments
 }
-
 
 func (c *controller) InsertDepartment(department model.Department) {
 	// insert department into database

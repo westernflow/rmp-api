@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"rmpParser/controller"
 	model "rmpParser/models"
+
 	// postgres
 
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/joho/godotenv"
+
 	// mongo
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -61,16 +63,16 @@ func main() {
 			departmentID := fmt.Sprintf("%d", department.ID)
 			mongoDepartments = append(mongoDepartments, model.MongoDepartment{Name: department.Name, DepartmentBase64Code: departmentID})
 		}
-		
+
 		// build mongodb professor reviews
 		mongoReviews := []model.MongoReview{}
 		for _, review := range professor.Reviews {
-			mongoReviews = append(mongoReviews, model.MongoReview{ProfessorID: professor.RMPId, Professor: professor.Name, 
-				Quality: review.Quality, Difficulty: review.Difficulty, Date: review.Date, ReviewText: review.ReviewText, 
+			mongoReviews = append(mongoReviews, model.MongoReview{ProfessorID: professor.RMPId, Professor: professor.Name,
+				Quality: review.Quality, Difficulty: review.Difficulty, Date: review.Date, ReviewText: review.ReviewText,
 				Helpful: review.Helpful, Clarity: review.Clarity})
 		}
 
-		mongoProfessor  := model.MongoProfessor{Name: professor.Name, RMPId: professor.RMPId, 
+		mongoProfessor := model.MongoProfessor{Name: professor.Name, RMPId: professor.RMPId,
 			Rating: professor.Rating, Difficulty: professor.Difficulty, Departments: mongoDepartments, Reviews: mongoReviews}
 
 		// fmt.Println("Inserting professor", professor.RMPId)
@@ -96,8 +98,8 @@ func main() {
 	// insert all reviews into mongo
 	for _, review := range reviews {
 		fmt.Println("Inserting review", review)
-		mongoReview := model.MongoReview{ProfessorID: review.ProfessorID, Professor: review.Professor, 
-			Quality: review.Quality, Difficulty: review.Difficulty, Date: review.Date, ReviewText: review.ReviewText, 
+		mongoReview := model.MongoReview{ProfessorID: review.ProfessorID, Professor: review.Professor,
+			Quality: review.Quality, Difficulty: review.Difficulty, Date: review.Date, ReviewText: review.ReviewText,
 			Helpful: review.Helpful, Clarity: review.Clarity}
 		reviewCollection.InsertOne(nil, mongoReview)
 	}
