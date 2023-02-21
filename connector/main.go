@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	_ "fmt"
 	"log"
 	model "rmpParser/models"
 	uwomodel "rmpParser/uwomodel"
+	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -66,8 +68,17 @@ func main() {
 
 	// get the courses collection in the uwo-tt-api database
 	coursesCollection := client.Database("uwo-tt-api").Collection("courses")
+
 	// get the professors collection in the rmp database
 	professorsCollection := client.Database("rmpDB").Collection("professors")
+
+	// wipe the final_professors collection
+	_, err = client.Database("uwo-tt-api").Collection("final_professors").DeleteMany(ctx, bson.D{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// get the final_professors collection in the uwo-tt-api database
 	finalProfessorsCollection := client.Database("uwo-tt-api").Collection("final_professors")
 
 	// query through each course in the courses collection
@@ -84,7 +95,9 @@ func main() {
 		sectionData := course.SectionData
 		professors := make([]string, 0)
 		professorsString := sectionData.Instructor
-		// fmt.Println(professorsString)
+
+		// the courseString is the course name in the form of "FACULTY NUMBER+SUFFIX" (e.g. "CS 1350A")
+		courseString := course.CourseData.Faculty + " " + strconv.Itoa(course.CourseData.Number) + course.CourseData.Suffix
 
 		currentString := ""
 		if (professorsString) == "." {
@@ -105,84 +118,114 @@ func main() {
 				currentString += string(professorsString[i])
 			}
 		}
+
 		professors = append(professors, currentString)
-		// fmt.Println(professors, len(professors))
 
 		for _, professor := range professors {
 			var rmpProfessor model.MongoProfessor
+			var finalProfessor uwomodel.Professor
 			firstInitial := professor[0:1]
 			restOfName := professor[3:]
+
 			// query for the professor in the professors collection with the first initial and the rest of the name
 			// use this regexp: ^A. X$, where A=firstInitial, X=restOfName
-
 			regexString := "^" + firstInitial + "." + "*" + restOfName + "$"
 
+			// filter for the professor using the regex, this is for checking in rmp professors db
 			filter := bson.M{"name": bson.M{"$regex": regexString}}
-			result := professorsCollection.FindOne(ctx, filter).Decode(&rmpProfessor)
-			var finalProfessor uwomodel.Professor
-			if result != nil {
-				// now create the professor object
-				finalProfessor := uwomodel.Professor{}
-				finalProfessor.RMPName = rmpProfessor.Name
-				finalProfessor.Name = professor
 
-				// review conversion
-				finalReviews := make([]uwomodel.Review, 0)
-				for _, review := range rmpProfessor.Reviews {
-					finalReview := uwomodel.Review{}
-					finalReview.ProfessorID = review.ProfessorID
-					finalReview.Professor = review.Professor
-					finalReview.Quality = review.Quality
-					finalReview.Difficulty = review.Difficulty
-					finalReview.Date = review.Date
-					finalReview.ReviewText = review.ReviewText
-					finalReview.Helpful = review.Helpful
-					finalReview.Clarity = review.Clarity
-					finalReviews = append(finalReviews, finalReview)
-				}
-				finalProfessor.Reviews = finalReviews
+			// filter for the professor using the regex, this is for checking in final professors db
+			rmpFilter := bson.M{"rmpName": bson.M{"$regex": regexString}}
 
-				// departmetn conversion
-				finalProfessor.Departments = make([]string, 0)
-				finalProfessor.Departments = append(finalProfessor.Departments, course.CourseData.Faculty)
-
-				// courses conversion
-				finalCourses := make([]string, 0)
-				// COMPSCI 1420A
-				finalCourses = append(finalCourses, course.CourseData.Faculty+" "+string(rune(course.CourseData.Number))+course.CourseData.Suffix)
-				finalProfessor.CurrentCourses = finalCourses
-
-				// finalProfessor.Departments = []string{course.SectionData.Department}
-				// finalProfessor.Courses = []string{course.SectionData.Course}
-
-			} else {
-				// otherwise we will create the professor object without the rmpprofessor
-				finalProfessor := uwomodel.Professor{}
-				finalProfessor.Name = professor
-				finalProfessor.RMPName = ""
-				finalProfessor.Reviews = make([]uwomodel.Review, 0)
-				finalProfessor.Departments = make([]string, 0)
-				finalProfessor.Departments = append(finalProfessor.Departments, course.CourseData.Faculty)
-				finalProfessor.CurrentCourses = make([]string, 0)
-				finalProfessor.CurrentCourses = append(finalProfessor.CurrentCourses, course.CourseData.Faculty+" "+string(rune(course.CourseData.Number))+course.CourseData.Suffix)
-				finalProfessor.Rating = 0
-				finalProfessor.Difficulty = 0
+			// this upates the courses array in the final professors db, uses courseString from earlier
+			coursesUpdate := bson.D{
+				{Key: "$addToSet", Value: bson.D{
+					{Key: "currentCourses", Value: courseString}}},
 			}
 
+			//  this updates the departments array in the final professors db, uses CourseData.Faculty
+			departmentUpdate := bson.D{
+				{Key: "$addToSet", Value: bson.D{{Key: "departments", Value: course.CourseData.Faculty}}},
+			}
+
+			// check if the professor is already in the final professors collection, and update the courses array
+			err := finalProfessorsCollection.FindOneAndUpdate(ctx, rmpFilter, coursesUpdate).Decode(&finalProfessor)
+			// if they are in the final professors collection, update the department too
+			if err == nil {
+				// fmt.Println("found prof in final", finalProfessor.RMPName)
+
+				// update the department, it might be more efficient to do this in 1 find call and 2 update calls or updating
+				// with the _id, im not sure, but this works for now
+
+				err = finalProfessorsCollection.FindOneAndUpdate(ctx, rmpFilter, departmentUpdate).Decode(&finalProfessor)
+				if err != nil {
+					// this should only happen if the professor is in the final professors collection but we couldnt find them or
+					// something is wrong with departmentUpdate
+
+					log.Fatal(err)
+				}
+				break
+				// break out of the loop - no need to add the professor to the final professors collection, as it is already there + updated
+			}
+
+			// } else {
+			// 	fmt.Println("prof not in final", professor)
+			// }
+
+			// if not, add them
+
+			professorsCollection.FindOne(ctx, filter).Decode(&rmpProfessor)
+			// better than error checking because the error one is a bit weird,
+			// this works the same way as the error checking, but is more accurate
+			if rmpProfessor.Name != "" {
+				// now create the professor object
+				finalProfessor.Name = rmpProfessor.Name
+				finalProfessor.RMPName = professor
+				finalProfessor.Rating = rmpProfessor.Rating
+				finalProfessor.Difficulty = rmpProfessor.Difficulty
+				finalProfessor.RMPId = rmpProfessor.RMPId
+				finalProfessor.Reviews = make([]uwomodel.Review, len(rmpProfessor.Reviews))
+
+				// review conversion
+				// this is better than the loop i had earlier because it is more concise
+				for i, review := range rmpProfessor.Reviews {
+					finalProfessor.Reviews[i] = uwomodel.Review{
+						ProfessorID: review.ProfessorID,
+						Professor:   review.Professor,
+						Quality:     review.Quality,
+						Difficulty:  review.Difficulty,
+						Date:        review.Date,
+						ReviewText:  review.ReviewText,
+						Helpful:     review.Helpful,
+						Clarity:     review.Clarity,
+					}
+				}
+
+				// department addition
+				finalProfessor.Departments = []string{course.CourseData.Faculty}
+
+				// courses addition
+				finalProfessor.CurrentCourses = []string{courseString}
+
+				finalProfessorsCollection.InsertOne(ctx, finalProfessor)
+			} else {
+				// otherwise we will create the professor object without the rmpprofessor
+				// fmt.Println("professor not found", professor)
+				finalProfessor := uwomodel.Professor{
+					Name:           professor,
+					RMPName:        professor,
+					Reviews:        []uwomodel.Review{},
+					Departments:    []string{course.CourseData.Faculty},
+					CurrentCourses: []string{courseString},
+					Rating:         0,
+					Difficulty:     0,
+				}
+				finalProfessorsCollection.InsertOne(ctx, finalProfessor)
+			}
+
+			// for whatever reason, the insertion doesnt work if its outside the else
+			// finalProfessorsCollection.InsertOne(ctx, finalProfessor)
 			// create a new professors collection in the uwo-tt-api database
-			finalProfessorsCollection.InsertOne(ctx, finalProfessor)
 		}
 	}
 }
-
-// for each professor,
-
-// for each professor in the course, we will query through the professors in the professors collection
-// for _, professor := range course.Professors {
-// 	// query through the professors collection to see if we have already seen this professor
-// 	var professorExists bool
-// 	professorsCollection.FindOne(ctx, bson.D{{"name", professor}}).Decode(&professorExists)
-// 	if professorExists {
-// 		// if we have already seen this professor, we will update their courses they teach with the current course
-// 	}
-// }
