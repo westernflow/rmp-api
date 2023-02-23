@@ -30,7 +30,7 @@ func GetInstance() *controller {
 func (c *controller) ConnectToDatabase() {
 	// Set client options
 	fmt.Println("Connecting to database...")
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27018")
+	clientOptions := options.Client().ApplyURI("mongodb+srv://maxn:VqzAX3UU6BSFEvuY@cluster1.wmo9hqd.mongodb.net/test")
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(context.Background(), clientOptions)

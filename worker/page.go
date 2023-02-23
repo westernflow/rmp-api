@@ -178,7 +178,7 @@ func buildProfessor(node model.ProfessorData) model.MongoProfessor {
 		// review.Course.Number = edge.Node.Class[index:]
 		review.Professor = professor.Name
 		review.Quality = edge.Node.HelpfulRating
-		review.Difficulty = edge.Node.ClarityRating
+		review.Difficulty = edge.Node.DifficultyRating
 		review.Date = edge.Node.Date
 		review.ReviewText = edge.Node.Comment
 		review.Helpful = edge.Node.HelpfulRating

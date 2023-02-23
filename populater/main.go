@@ -14,7 +14,8 @@ import (
 func main() {
 	// load arg variables
 	fmt.Println(os.Args)
-	dropTables := os.Args[1] == "init"
+	dropTables := false
+	if len(os.Args) >= 1 {dropTables = os.Args[1] == "init"}
 
 	err := godotenv.Load()
 	if err != nil {
