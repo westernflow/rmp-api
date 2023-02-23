@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+
 	// "os"
 	uwomodel "rmpParser/uwomodel"
 	"testing"
@@ -46,14 +47,28 @@ func TestGetRatingAndDiffNoReviews(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedRating := professor.Rating
-		expectedDiff := professor.Difficulty
+		// sum all ratings and difficulties and average them
+		// check if no reviews
+		expectedDiff := 0.0
+		expectedRating := 0.0
+
+		if len(professor.Reviews) == 0 {
+			return
+		}
+
+		for _, review := range professor.Reviews {
+			expectedRating += review.Quality
+			expectedDiff += review.Difficulty
+		}
+
+		expectedRating /= float64(len(professor.Reviews))
+		expectedDiff /= float64(len(professor.Reviews))
 
 		updateRatingAndDiff(&professor)
 
 		newRating := professor.Rating
 		newDiff := professor.Difficulty
-
+		
 		if newRating != expectedRating {
 			t.Errorf("Expected rating to be %f, got %f", expectedRating, newRating)
 		}
