@@ -3,23 +3,27 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+
 	// "os"
 	uwomodel "rmpParser/uwomodel"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func TestGetRatingAndDiffNoReviews(t *testing.T) {
+
 	// Requires the MongoDB Go Driver
 	// https://go.mongodb.org/mongo-driver
 	ctx := context.TODO()
-
+	// load .env file from root directory
+	err := godotenv.Load("../.env")
 	// get the PROD_MONGODB connection string from the .env file
-	connectionString := "mongodb+srv://maxn:VqzAX3UU6BSFEvuY@cluster1.wmo9hqd.mongodb.net/test"
-
+	connectionString := os.Getenv("PROD_MONGODB")
 	// Set client options
 	clientOptions := options.Client().ApplyURI(connectionString)
 
@@ -46,8 +50,22 @@ func TestGetRatingAndDiffNoReviews(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		expectedRating := professor.Rating
-		expectedDiff := professor.Difficulty
+		// sum all ratings and difficulties and average them
+		// check if no reviews
+		expectedDiff := 0.0
+		expectedRating := 0.0
+
+		if len(professor.Reviews) == 0 {
+			return
+		}
+
+		for _, review := range professor.Reviews {
+			expectedRating += review.Quality
+			expectedDiff += review.Difficulty
+		}
+
+		expectedRating /= float64(len(professor.Reviews))
+		expectedDiff /= float64(len(professor.Reviews))
 
 		updateRatingAndDiff(&professor)
 

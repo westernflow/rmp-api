@@ -17,7 +17,7 @@ func main() {
 	dropTables := false
 	if len(os.Args) >= 1 {dropTables = os.Args[1] == "init"}
 
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
 		panic(err)
 	}

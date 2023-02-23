@@ -18,7 +18,7 @@ import (
 
 func main() {
 	// load env variables
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 
 	// create mongo connection
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27018"))
