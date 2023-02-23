@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	// "os"
 	uwomodel "rmpParser/uwomodel"
@@ -19,7 +20,7 @@ func TestGetRatingAndDiffNoReviews(t *testing.T) {
 	ctx := context.TODO()
 
 	// get the PROD_MONGODB connection string from the .env file
-	connectionString := "mongodb+srv://maxn:VqzAX3UU6BSFEvuY@cluster1.wmo9hqd.mongodb.net/test"
+	connectionString := os.Getenv("PROD_MONGODB")
 
 	// Set client options
 	clientOptions := options.Client().ApplyURI(connectionString)
@@ -68,7 +69,7 @@ func TestGetRatingAndDiffNoReviews(t *testing.T) {
 
 		newRating := professor.Rating
 		newDiff := professor.Difficulty
-		
+
 		if newRating != expectedRating {
 			t.Errorf("Expected rating to be %f, got %f", expectedRating, newRating)
 		}
