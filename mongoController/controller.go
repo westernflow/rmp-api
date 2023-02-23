@@ -3,10 +3,12 @@ package mongocontroller
 import (
 	"context"
 	"fmt"
+	"os"
 	model "rmpParser/models"
 	worker "rmpParser/worker"
 
 	// mongo
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -30,7 +32,11 @@ func GetInstance() *controller {
 func (c *controller) ConnectToDatabase() {
 	// Set client options
 	fmt.Println("Connecting to database...")
-	clientOptions := options.Client().ApplyURI("mongodb+srv://maxn:VqzAX3UU6BSFEvuY@cluster1.wmo9hqd.mongodb.net/test")
+	// load env
+	err := godotenv.Load("../.env")
+	// get mongo uri from env
+	mongoURI := os.Getenv("PROD_MONGODB")
+	clientOptions := options.Client().ApplyURI(mongoURI)
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(context.Background(), clientOptions)

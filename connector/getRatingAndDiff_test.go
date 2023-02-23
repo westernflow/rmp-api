@@ -9,19 +9,21 @@ import (
 	uwomodel "rmpParser/uwomodel"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func TestGetRatingAndDiffNoReviews(t *testing.T) {
+
 	// Requires the MongoDB Go Driver
 	// https://go.mongodb.org/mongo-driver
 	ctx := context.TODO()
-
+	// load .env file from root directory
+	err := godotenv.Load("../.env")
 	// get the PROD_MONGODB connection string from the .env file
 	connectionString := os.Getenv("PROD_MONGODB")
-
 	// Set client options
 	clientOptions := options.Client().ApplyURI(connectionString)
 
