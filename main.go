@@ -1,44 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"github.com/joho/godotenv"
 
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	_ "github.com/aws/aws-lambda-go/lambda"
-	"github.com/valyala/fastjson"
+	mongocontroller "rmpParser/mongoController"
+	"rmpParser/worker"
 )
 
-func HandleRequest(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	ApiResponse := events.APIGatewayProxyResponse{}
-	// Switch for identifying the HTTP request
-	switch request.HTTPMethod {
-	case "GET":
-		// Obtain the QueryStringParameter
-		name := request.QueryStringParameters["name"]
-		if name != "" {
-			ApiResponse = events.APIGatewayProxyResponse{Body: "Hey " + name + " welcome! ", StatusCode: 200}
-
-		} else {
-			ApiResponse = events.APIGatewayProxyResponse{Body: "Error: Query Parameter name missing", StatusCode: 500}
-		}
-
-	case "POST":
-		// validates json and returns error if not working
-		err := fastjson.Validate(request.Body)
-
-		if err != nil {
-			body := "Error: Invalid JSON payload ||| " + fmt.Sprint(err) + " Body Obtained" + "||||" + request.Body
-			ApiResponse = events.APIGatewayProxyResponse{Body: body, StatusCode: 500}
-		} else {
-			ApiResponse = events.APIGatewayProxyResponse{Body: request.Body, StatusCode: 200}
-		}
-
+func main() {
+	err := godotenv.Load()
+	if err != nil {
+		panic(err)
 	}
-	// Response
-	return ApiResponse, nil
-}
+	c := mongocontroller.GetInstance()
+	// connect to the database
+	c.ConnectToDatabase()
 
-func main(){
-    lambda.Start(HandleRequest)
+	// populate the database (dont do this if you already have data in the database)
+	// c.InitializeDatabase()
+	// c.PopulateDatabase()
+	worker.Scrape()
 }
