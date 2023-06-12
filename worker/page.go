@@ -66,14 +66,14 @@ type PageResult struct {
 // getDepartments populates the database with all departments at Western
 func GetDepartments() []model.MongoDepartment {
 	newHomePageRequest := model.HomePageRequest{
-		Query: homePageQuery,
+		Query: HomePageQuery,
 		Variables: model.HPV{
 			Query: model.HomePageVariableQuery{
 				Text:     "",
-				SchoolID: westernID,
+				SchoolID: WesternID,
 				Fallback: true,
 			},
-			SchoolId: westernID,
+			SchoolId: WesternID,
 		},
 	}
 	// create a request to get the departments
@@ -193,7 +193,7 @@ func buildProfessor(node model.ProfessorData) model.MongoProfessor {
 func GetProfessorData(id string) (professor model.MongoProfessor, err error) {
 	variables := make(map[string]interface{})
 	variables["id"] = id
-	request := model.Request{Query: profQuery, Variables: variables}
+	request := model.Request{Query: ProfQuery, Variables: variables}
 	// send the graphql request
 	// convert request to string
 	requestJson, err := json.Marshal(request)
@@ -235,15 +235,15 @@ type Controller interface {
 // gets all professors from the given department
 func AddProfessorsFromDepartmentToDatabase(c Controller, department model.MongoDepartment) {
 	newHomePageRequest := model.HomePageRequest{
-		Query: departmentQuery,
+		Query: DepartmentQuery,
 		Variables: model.HPV{
 			Query: model.HomePageVariableQuery{
 				Text:       "",
-				SchoolID:   westernID,
+				SchoolID:   WesternID,
 				Fallback:   true,
 				Department: &department.DepartmentBase64Code,
 			},
-			SchoolId: westernID,
+			SchoolId: WesternID,
 		},
 	}
 	// create a request to get the departments
