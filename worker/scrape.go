@@ -10,7 +10,7 @@ func Scrape() []model.MongoProfessor {
 	// create a new page scraper with url set to "https://www.ratemyprofessors.com/school?sid=1491"
 
 	scraper := PageScraper{
-		URL: "https://www.ratemyprofessors.com/search/teachers?query=*&sid=1491",
+		URL: "https://www.ratemyprofessors.com/search/professors/1491?q=*",
 	}
 
 	// fetch the document from the page scraper
