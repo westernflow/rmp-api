@@ -2,7 +2,7 @@ package uwomodel
 
 // TimeComponent represents a single meeting time for a course section
 type TimeComponent struct {
-	Day       string `bson:"days" json:"days" example:"M"`
+	Days       string `bson:"days" json:"days" example:"M"`
 	StartTime string `bson:"startTime" json:"startTime" example:"8:30 AM"`
 	EndTime   string `bson:"endTime" json:"endTime" example:"1:30 PM"`
 }
@@ -13,7 +13,7 @@ type SectionComponent struct {
 	Component   string          `bson:"component" json:"component" example:"LEC"`
 	ClassNumber int             `bson:"classNumber" json:"classNumber" example:"5000"`
 	Location    string          `bson:"location" json:"location" example:"NS 145"`
-	Instructor  string          `bson:"instructor" json:"instructor" example:"Haffie"`
+	Instructors  []string          `bson:"instructors" json:"instructors" example:"Haffie"`
 	Reqs        string          `bson:"requisites" json:"requisites" example:"REQUISITES:..."`
 	Status      string          `bson:"status" json:"status" example:"Full"`
 	Campus      string          `bson:"campus" json:"campus" example:"Main"`
@@ -24,7 +24,7 @@ type SectionComponent struct {
 // CourseComponent - represents the specific data common to all courses sections of any given course
 type CourseComponent struct {
 	Faculty     string `bson:"faculty" json:"faculty" example:"CLASSICS"`
-	Number      int    `bson:"number" json:"number" example:"2053"`
+	Number      string `bson:"number" json:"number" example:"2053"`
 	Suffix      string `bson:"suffix" json:"suffix" example:"B"`
 	Name        string `bson:"name" json:"name" example:"MATH FOR FINANCIAL ANALYSIS"`
 	Description string `bson:"description" json:"description" example:"Course description"`
@@ -32,7 +32,6 @@ type CourseComponent struct {
 
 // Course - Returned as endpoint only, stores the information of a course and all its related section information
 type Course struct {
-	ID          string             `bson:"_id" json:"id"`
 	Source      SourceInfo         `bson:"source" json:"source"`
 	Time        TimeInfo           `bson:"time" json:"time"`
 	CourseData  CourseComponent    `bson:"courseData" json:"courseData"`
