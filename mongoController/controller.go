@@ -103,6 +103,7 @@ func (c *controller) PopulateDatabase(given model.TeacherSearchResults) {
 		mongoProf := uwomodel.Professor{
 			RMPName: prof.FirstName + " " + prof.LastName,
 			Reviews: uwoReviews,
+			RMPId:   prof.ID,
 		}
 		fmt.Println(mongoProf)
 
