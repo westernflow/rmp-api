@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"os"
 	model "rmpParser/models"
-	worker "rmpParser/worker"
+	"rmpParser/uwomodel"
 
 	// mongo
 	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -35,7 +34,7 @@ func (c *controller) ConnectToDatabase() {
 	// load env
 	err := godotenv.Load("../.env")
 	// get mongo uri from env
-	mongoURI := os.Getenv("PROD_MONGODB")
+	mongoURI := os.Getenv("LOCAL_MONGODB")
 	clientOptions := options.Client().ApplyURI(mongoURI)
 
 	// Connect to MongoDB
@@ -75,58 +74,85 @@ func (c *controller) DropTables() {
 func (c *controller) CreateTables() {
 	// set professors and departments collections
 	c.professors = c.db.Collection("professors")
-	c.departments = c.db.Collection("departments")
+
 }
 
-func (c *controller) PopulateDatabase(departments []model.MongoDepartment) {
+func (c *controller) PopulateDatabase(given model.TeacherSearchResults) {
 	fmt.Println("Populating database...")
-	for i, department := range departments {
-		// displays percentages rounded to 2 decimal places
-		fmt.Println("Fetching data from department: ", department.Name, "; Percentage done: ", fmt.Sprintf("%.2f", float64(i)/float64(len(departments))*100), "%")
-		c.InsertDepartment(department)
-		worker.AddProfessorsFromDepartmentToDatabase(c, department)
+
+	profs := given.Data.Search.Teachers.Edges
+	cleanedProfs := []uwomodel.Professor{}
+	for _, prof := range profs {
+		prof := prof.Node
+		fmt.Println(prof)
+		uwoReviews := []uwomodel.Review{}
+		for _, review := range prof.Ratings.Edges {
+			review := review.Node
+			// create mongoReview
+			mongoReview := uwomodel.Review{
+				ProfessorID: prof.ID,
+				Quality:     review.QualityRating,
+				Clarity:     review.ClarityRating,
+				Difficulty:  review.DifficultyRating,
+				Helpful:     review.HelpfulRating,
+				Date:        review.Date,
+				ReviewText:  review.Comment,
+			}
+			uwoReviews = append(uwoReviews, mongoReview)
+		}
+		mongoProf := uwomodel.Professor{
+			RMPName: prof.FirstName + " " + prof.LastName,
+			Reviews: uwoReviews,
+			RMPId:   prof.ID,
+		}
+		fmt.Println(mongoProf)
+
+		cleanedProfs = append(cleanedProfs, mongoProf)
 	}
+
+	// insert professors into database
+	c.InsertProfessors(cleanedProfs)
 }
 
-func (c *controller) GetDepartmentByBase64Code(base64Code string) (department model.MongoDepartment, err error) {
-	// get department from database given base64Code
-	filter := bson.D{
-		{Key: "departmentBase64Code", Value: base64Code},
-	}
-	err = c.departments.FindOne(context.Background(), filter).Decode(&department)
-	return
-}
+// func (c *controller) GetDepartmentByBase64Code(base64Code string) (department model.MongoDepartment, err error) {
+// 	// get department from database given base64Code
+// 	filter := bson.D{
+// 		{Key: "departmentBase64Code", Value: base64Code},
+// 	}
+// 	err = c.departments.FindOne(context.Background(), filter).Decode(&department)
+// 	return
+// }
 
-func (c *controller) GetAllProfessors() []model.MongoProfessor {
-	// get all professors from database
+// func (c *controller) GetAllProfessors() []model.MongoProfessor {
+// 	// get all professors from database
 
-	var professors []model.MongoProfessor
+// 	var professors []model.MongoProfessor
 
-	cursor, err := c.professors.Find(context.Background(), model.MongoProfessor{})
-	if err != nil {
-		panic(err)
-	}
-	if err = cursor.All(context.Background(), &professors); err != nil {
-		panic(err)
-	}
+// 	cursor, err := c.professors.Find(context.Background(), model.MongoProfessor{})
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	if err = cursor.All(context.Background(), &professors); err != nil {
+// 		panic(err)
+// 	}
 
-	return professors
-}
+// 	return professors
+// }
 
 func (c *controller) CloseConnection() {
 	// close connection to database
 	c.db.Client().Disconnect(context.Background())
 }
 
-func (c *controller) GetAllReviews() []model.MongoReview {
-	// query through all professors and get all reviews
-	var reviews []model.MongoReview
-	professors := c.GetAllProfessors()
-	for _, professor := range professors {
-		reviews = append(reviews, professor.Reviews...)
-	}
-	return reviews
-}
+// func (c *controller) GetAllReviews() []model.MongoReview {
+// 	// query through all professors and get all reviews
+// 	var reviews []model.MongoReview
+// 	// professors := c.GetAllProfessors()
+// 	for _, professor := range professors {
+// 		reviews = append(reviews, professor.Reviews...)
+// 	}
+// 	return reviews
+// }
 
 func (c *controller) GetAllDepartments() []model.MongoDepartment {
 	// get all departments from database
@@ -151,45 +177,13 @@ func (c *controller) InsertDepartment(department model.MongoDepartment) {
 	}
 }
 
-func (c *controller) InsertProfessor(department model.MongoDepartment, professor model.MongoProfessor) {
-	// check if the professor already exists in the database
-	var existingProfessor model.MongoProfessor
-	// query for professor with the same RMPId
-	filter := bson.D{
-		{Key: "rmpId", Value: professor.RMPId},
-	}
+// array of professors
+func (c *controller) InsertProfessors(professors []uwomodel.Professor) {
 
-	update := bson.M{
-		"$addToSet": bson.M{
-			"departments": department}}
-
-	result := c.professors.FindOne(context.Background(), filter).Decode(&existingProfessor)
-
-	if result != nil {
-		professor.Departments[0].DepartmentBase64Code = department.DepartmentBase64Code
-		professor.Departments[0].Name = department.Name
-		professor.Departments[0].DepartmentNumber = department.DepartmentNumber
-		_, err := c.professors.InsertOne(context.Background(), professor)
+	for _, prof := range professors {
+		_, err := c.professors.InsertOne(context.Background(), prof)
 		if err != nil {
 			panic(err)
-		}
-	} else {
-		fmt.Println("Adding department: ", department.Name, " to professor: ", professor.Name)
-		departmentExists := false
-		for _, existingDepartment := range existingProfessor.Departments {
-			if existingDepartment.DepartmentBase64Code == department.DepartmentBase64Code {
-				departmentExists = true
-				break
-			}
-		}
-		if !departmentExists {
-			// append the new department to the professor's departments array
-			existingProfessor.Departments = append(existingProfessor.Departments, department)
-			// update professor in database
-			_, err := c.professors.UpdateOne(context.Background(), filter, update)
-			if err != nil {
-				panic(err)
-			}
 		}
 	}
 }

@@ -22,6 +22,11 @@ func TestGetRatingAndDiffNoReviews(t *testing.T) {
 	ctx := context.TODO()
 	// load .env file from root directory
 	err := godotenv.Load("../.env")
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	// get the PROD_MONGODB connection string from the .env file
 	connectionString := os.Getenv("PROD_MONGODB")
 	// Set client options
@@ -40,7 +45,7 @@ func TestGetRatingAndDiffNoReviews(t *testing.T) {
 
 	professor := uwomodel.Professor{}
 
-	professorsCollection := client.Database("test").Collection("final_professors")
+	professorsCollection := client.Database("test").Collection("professors")
 	cursor, err := professorsCollection.Find(ctx, bson.D{{}})
 	if err != nil {
 		log.Fatal(err)
@@ -60,8 +65,8 @@ func TestGetRatingAndDiffNoReviews(t *testing.T) {
 		}
 
 		for _, review := range professor.Reviews {
-			expectedRating += review.Quality
-			expectedDiff += review.Difficulty
+			expectedRating += float64(review.Quality)
+			expectedDiff += float64(review.Difficulty)
 		}
 
 		expectedRating /= float64(len(professor.Reviews))

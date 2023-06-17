@@ -62,48 +62,35 @@ type DepartmentPageData struct {
 	} `json:"data"`
 }
 
-type HomePageData struct {
+type TeacherSearchResults struct {
 	Data struct {
 		School struct {
-			Typename string `json:"__typename"`
-			ID       string `json:"id"`
-			Name     string `json:"name"`
+			ID   string `json:"id"`
+			Name string `json:"name"`
 		} `json:"school"`
 		Search struct {
 			Teachers struct {
-				DidFallback bool `json:"didFallback"`
-				Edges       []struct {
+				Edges []struct {
 					Cursor string `json:"cursor"`
 					Node   struct {
-						Typename      string  `json:"__typename"`
-						AvgDifficulty float64 `json:"avgDifficulty"`
-						AvgRating     float64 `json:"avgRating"`
-						Department    string  `json:"department"`
-						FirstName     string  `json:"firstName"`
-						ID            string  `json:"id"`
-						IsSaved       bool    `json:"isSaved"`
-						LastName      string  `json:"lastName"`
-						LegacyID      int     `json:"legacyId"`
-						NumRatings    int     `json:"numRatings"`
-						School        struct {
-							ID   string `json:"id"`
-							Name string `json:"name"`
-						} `json:"school"`
-						WouldTakeAgainPercent float64 `json:"wouldTakeAgainPercent"`
+						FirstName string `json:"firstName"`
+						ID        string `json:"id"`
+						LastName  string `json:"lastName"`
+						Ratings   struct {
+							Edges []struct {
+								Node struct {
+									ClarityRating    int    `json:"clarityRating"`
+									Comment          string `json:"comment"`
+									Date             string `json:"date"`
+									DifficultyRating int    `json:"difficultyRating"`
+									HelpfulRating    int    `json:"helpfulRating"`
+									ID               string `json:"id"`
+									QualityRating    int    `json:"qualityRating"`
+								} `json:"node"`
+							} `json:"edges"`
+						} `json:"ratings"`
 					} `json:"node"`
 				} `json:"edges"`
-				Filters []struct {
-					Field   string `json:"field"`
-					Options []struct {
-						ID    string `json:"id"`
-						Value string `json:"value"`
-					} `json:"options"`
-				} `json:"filters"`
-				PageInfo struct {
-					EndCursor   string `json:"endCursor"`
-					HasNextPage bool   `json:"hasNextPage"`
-				} `json:"pageInfo"`
-				ResultCount int `json:"resultCount"`
 			} `json:"teachers"`
 		} `json:"search"`
 	} `json:"data"`
