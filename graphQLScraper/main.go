@@ -1,35 +1,49 @@
 package main
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
-	"log"
+	"io/ioutil"
+	"net/http"
 	model "rmpParser/models"
 	"rmpParser/worker"
-
-	"github.com/machinebox/graphql"
+	"strings"
 )
 
 func main() {
-	AUTH_TOKEN := worker.AuthID
-	UNI_ID := worker.WesternID
+	url := "https://www.ratemyprofessors.com/graphql"
+	method := "POST"
 
-	graphqlClient := graphql.NewClient("https://www.ratemyprofessors.com/graphql")
-	// post request
-	graphqlRequest := graphql.NewRequest(worker.ProfQuery)
-	graphqlRequest.Var("text", "Allan Gedalof")
-	graphqlRequest.Var("schoolID", UNI_ID)
+	payload := worker.AllProfsAndReviewsQuery
 
-	graphqlRequest.Header.Set("Authorization", "Basic "+AUTH_TOKEN)
-	graphqlRequest.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, strings.NewReader(payload))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	req.Header.Add("Authorization", "Basic dGVzdDp0ZXN0")
+	req.Header.Add("Content-Type", "application/json")
 
-	var graphqlResponse model.HomePageData
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer res.Body.Close()
 
-	if err := graphqlClient.Run(context.Background(), graphqlRequest, &graphqlResponse); err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println("Query successful")
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	fmt.Println(graphqlResponse.Data)
+	var response model.TeacherSearchResults
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(response.Data.Search.Teachers.Edges[0].Node.Ratings.Edges[0].Node)
 }
