@@ -2,7 +2,6 @@ package worker
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -63,77 +62,77 @@ type PageResult struct {
 	Doc  *goquery.Document
 }
 
-// getDepartments populates the database with all departments at Western
-func GetDepartments() []model.MongoDepartment {
-	newHomePageRequest := model.HomePageRequest{
-		Query: HomePageQuery,
-		Variables: model.HPV{
-			Query: model.HomePageVariableQuery{
-				Text:     "",
-				SchoolID: WesternID,
-				Fallback: true,
-			},
-			SchoolId: WesternID,
-		},
-	}
-	// create a request to get the departments
-	requestJson, err := json.Marshal(newHomePageRequest)
-	if err != nil {
-		panic(err)
-	}
+// // getDepartments populates the database with all departments at Western
+// func GetDepartments() []model.MongoDepartment {
+// 	newHomePageRequest := model.HomePageRequest{
+// 		Query: HomePageQuery,
+// 		Variables: model.HPV{
+// 			Query: model.HomePageVariableQuery{
+// 				Text:     "",
+// 				SchoolID: WesternID,
+// 				Fallback: true,
+// 			},
+// 			SchoolId: WesternID,
+// 		},
+// 	}
+// 	// create a request to get the departments
+// 	requestJson, err := json.Marshal(newHomePageRequest)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	req, err := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
-	if err != nil {
-		fmt.Println(err)
-	}
+// 	req, err := http.NewRequest("POST", "https://www.ratemyprofessors.com/graphql", bytes.NewBuffer(requestJson))
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
 
-	// add headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
+// 	// add headers
+// 	req.Header.Set("Content-Type", "application/json")
+// 	req.Header.Set("Authorization", "Basic dGVzdDp0ZXN0")
+// 	client := &http.Client{}
+// 	resp, err := client.Do(req)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
 
-	defer resp.Body.Close()
+// 	defer resp.Body.Close()
 
-	// read the response
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
+// 	// read the response
+// 	body, err := ioutil.ReadAll(resp.Body)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
 
-	// unmarshal the response
-	var response model.HomePageData
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		fmt.Println(err)
-	}
+// 	// unmarshal the response
+// 	var response model.TeacherSearchResults
+// 	err = json.Unmarshal(body, &response)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
 
-	// get the departments
-	var departments []model.MongoDepartment
-	for _, department := range response.Data.Search.Teachers.Filters[0].Options {
-		// decode the base64 department.ID to a string
-		decode, err := base64.StdEncoding.DecodeString(department.ID)
-		if err != nil {
-			fmt.Println(err)
-		}
+// 	// get the departments
+// 	var departments []model.MongoDepartment
+// 	for _, department := range response.Data.Search.Teachers.Edges {
+// 		// decode the base64 department.ID to a string
+// 		decode, err := base64.StdEncoding.DecodeString(department)
+// 		if err != nil {
+// 			fmt.Println(err)
+// 		}
 
-		base64 := string(decode)
-		parsedDept := strings.Split(base64, "-")
-		if len(parsedDept) != 2 {
-			continue
-		}
-		base64 = parsedDept[1]
-		departments = append(departments, model.MongoDepartment{
-			Name:                 department.Value,
-			DepartmentBase64Code: department.ID,
-			DepartmentNumber:     base64,
-		})
-	}
-	return departments
-}
+// 		base64 := string(decode)
+// 		parsedDept := strings.Split(base64, "-")
+// 		if len(parsedDept) != 2 {
+// 			continue
+// 		}
+// 		base64 = parsedDept[1]
+// 		departments = append(departments, model.MongoDepartment{
+// 			Name:                 department.Value,
+// 			DepartmentBase64Code: department.ID,
+// 			DepartmentNumber:     base64,
+// 		})
+// 	}
+// 	return departments
+// }
 
 // buildProfessor takes a ProfessorData model and transforms it into a Professor model
 func buildProfessor(node model.ProfessorData) model.MongoProfessor {
@@ -275,7 +274,7 @@ func AddProfessorsFromDepartmentToDatabase(c Controller, department model.MongoD
 	}
 
 	// unmarshal the response
-	var response model.HomePageData
+	var response model.TeacherSearchResults
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		fmt.Println(err)
