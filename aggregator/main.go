@@ -3,8 +3,8 @@ package main
 
 import (
 	"fmt"
-	"rmpParser/controller"
 	model "rmpParser/models"
+	controller "rmpParser/mongoController"
 
 	// postgres
 
