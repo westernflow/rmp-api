@@ -4,7 +4,6 @@ import (
 	"github.com/joho/godotenv"
 
 	mongocontroller "rmpParser/mongoController"
-	"rmpParser/worker"
 )
 
 func main() {
@@ -19,5 +18,4 @@ func main() {
 	// populate the database (dont do this if you already have data in the database)
 	// c.InitializeDatabase()
 	// c.PopulateDatabase()
-	worker.Scrape()
 }
